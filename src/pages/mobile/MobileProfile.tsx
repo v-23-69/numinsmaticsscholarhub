@@ -1,33 +1,32 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   Settings, Grid3X3, Bookmark, Star, ChevronRight, 
-  Shield, Edit2, LogOut, Award, UserCheck
+  Shield, Edit2, LogOut, Award, UserCheck, User
 } from "lucide-react";
 import { MobileNavBar } from "@/components/mobile/MobileNavBar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import coinMughalFront from "@/assets/coin-mughal-front.jpg";
 import coinBritishFront from "@/assets/coin-british-front.jpg";
 import coinAncientFront from "@/assets/coin-ancient-front.jpg";
 
-const mockUser = {
-  id: "1",
-  username: "coin_collector",
-  displayName: "Rajesh Sharma",
-  avatar: "https://i.pravatar.cc/150?img=33",
-  bio: "Passionate numismatist since 2010. Specializing in Mughal & British India coins. NSH Verified Seller ✓",
-  isVerified: true,
-  isSeller: true,
-  stats: {
-    posts: 124,
-    followers: 2340,
-    following: 567,
-    collections: 8,
-  },
-  badges: ["Early Adopter", "Top Seller", "Expert Reviewer"],
-};
+interface Profile {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  is_verified: boolean | null;
+  badges: string[];
+  follower_count: number | null;
+  following_count: number | null;
+  post_count: number | null;
+}
 
 const tabs = [
   { id: "posts", label: "Posts", icon: Grid3X3 },
@@ -48,13 +47,88 @@ const mockPosts = [
 export default function MobileProfile() {
   const [activeTab, setActiveTab] = useState("posts");
   const [showSettings, setShowSettings] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      
+      setProfile({
+        ...data,
+        badges: Array.isArray(data.badges) ? data.badges as string[] : [],
+      });
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: 'Signed out',
+        description: 'You have been logged out successfully.',
+      });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to sign out. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background pb-20 flex flex-col items-center justify-center px-6">
+        <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-4">
+          <User className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground mb-2">Sign in to NSH</h2>
+        <p className="text-muted-foreground text-center mb-6">
+          Access your profile, collections, and connect with other collectors.
+        </p>
+        <Button 
+          onClick={() => navigate('/auth')}
+          className="w-full max-w-xs h-12 rounded-xl bg-primary hover:bg-emerald-light"
+        >
+          Sign In / Sign Up
+        </Button>
+        <MobileNavBar />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/40 safe-area-inset-top">
         <div className="flex items-center justify-between h-14 px-4">
-          <span className="font-serif font-semibold text-lg">{mockUser.username}</span>
+          <span className="font-serif font-semibold text-lg">
+            {profile?.username || user.email?.split('@')[0] || 'Profile'}
+          </span>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="p-2 -mr-2"
@@ -70,12 +144,18 @@ export default function MobileProfile() {
           <div className="flex items-start gap-4">
             {/* Avatar */}
             <div className="relative">
-              <img
-                src={mockUser.avatar}
-                alt={mockUser.displayName}
-                className="w-20 h-20 rounded-full object-cover border-2 border-gold/30"
-              />
-              {mockUser.isVerified && (
+              {profile?.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={profile.display_name || ''}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-gold/30"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center border-2 border-gold/30">
+                  <User className="w-10 h-10 text-muted-foreground" />
+                </div>
+              )}
+              {profile?.is_verified && (
                 <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald flex items-center justify-center border-2 border-background">
                   <Shield className="w-3 h-3 text-primary-foreground" />
                 </div>
@@ -85,19 +165,19 @@ export default function MobileProfile() {
             {/* Stats */}
             <div className="flex-1 grid grid-cols-4 gap-2 text-center">
               <div>
-                <p className="text-lg font-semibold">{mockUser.stats.posts}</p>
+                <p className="text-lg font-semibold">{profile?.post_count || 0}</p>
                 <p className="text-xs text-muted-foreground">Posts</p>
               </div>
               <div>
-                <p className="text-lg font-semibold">{mockUser.stats.followers.toLocaleString()}</p>
+                <p className="text-lg font-semibold">{(profile?.follower_count || 0).toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Followers</p>
               </div>
               <div>
-                <p className="text-lg font-semibold">{mockUser.stats.following}</p>
+                <p className="text-lg font-semibold">{profile?.following_count || 0}</p>
                 <p className="text-xs text-muted-foreground">Following</p>
               </div>
               <div>
-                <p className="text-lg font-semibold">{mockUser.stats.collections}</p>
+                <p className="text-lg font-semibold">0</p>
                 <p className="text-xs text-muted-foreground">Collections</p>
               </div>
             </div>
@@ -106,31 +186,35 @@ export default function MobileProfile() {
           {/* Name & Bio */}
           <div className="mt-4">
             <div className="flex items-center gap-2">
-              <h1 className="font-semibold">{mockUser.displayName}</h1>
-              {mockUser.isSeller && (
-                <span className="px-2 py-0.5 text-[10px] font-medium bg-gold/10 text-gold-dark rounded-full">
-                  Seller
-                </span>
-              )}
+              <h1 className="font-semibold">
+                {profile?.display_name || user.email?.split('@')[0] || 'Collector'}
+              </h1>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{mockUser.bio}</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {profile?.bio || 'No bio yet'}
+            </p>
             
             {/* Badges */}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {mockUser.badges.map((badge) => (
-                <span
-                  key={badge}
-                  className="px-2 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-full"
-                >
-                  {badge}
-                </span>
-              ))}
-            </div>
+            {profile?.badges && profile.badges.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {profile.badges.map((badge) => (
+                  <span
+                    key={badge}
+                    className="px-2 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-full"
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
           <div className="flex gap-2 mt-4">
-            <Button className="flex-1 btn-primary rounded-xl h-9">
+            <Button 
+              className="flex-1 btn-primary rounded-xl h-9"
+              onClick={() => navigate('/profile/setup')}
+            >
               <Edit2 className="w-4 h-4 mr-2" />
               Edit Profile
             </Button>
@@ -209,7 +293,7 @@ export default function MobileProfile() {
             <div className="w-10 h-1 rounded-full bg-border mx-auto mb-6" />
             <nav className="space-y-2">
               <Link
-                to="/settings/profile"
+                to="/profile/setup"
                 className="flex items-center justify-between p-3 rounded-xl hover:bg-secondary"
               >
                 <div className="flex items-center gap-3">
@@ -238,7 +322,10 @@ export default function MobileProfile() {
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </Link>
-              <button className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-secondary text-destructive">
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-secondary text-destructive"
+              >
                 <LogOut className="w-5 h-5" />
                 <span>Log Out</span>
               </button>
