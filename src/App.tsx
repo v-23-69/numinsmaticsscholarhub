@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Mobile Pages
 import MobileHome from "./pages/mobile/MobileHome";
@@ -12,6 +14,8 @@ import MobileAuthenticate from "./pages/mobile/MobileAuthenticate";
 import MobileMessages from "./pages/mobile/MobileMessages";
 import MobileChatRoom from "./pages/mobile/MobileChatRoom";
 import SellerDashboard from "./pages/mobile/SellerDashboard";
+import MobileAuth from "./pages/mobile/MobileAuth";
+import ProfileSetup from "./pages/mobile/ProfileSetup";
 import CoinDetail from "./pages/CoinDetail";
 import NotFound from "./pages/NotFound";
 
@@ -23,17 +27,49 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<MobileHome />} />
-          <Route path="/marketplace" element={<MobileMarketplace />} />
-          <Route path="/marketplace/coin/:id" element={<CoinDetail />} />
-          <Route path="/authenticate" element={<MobileAuthenticate />} />
-          <Route path="/messages" element={<MobileMessages />} />
-          <Route path="/messages/:id" element={<MobileChatRoom />} />
-          <Route path="/profile" element={<MobileProfile />} />
-          <Route path="/dashboard/seller" element={<SellerDashboard />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/" element={<MobileHome />} />
+            <Route path="/auth" element={<MobileAuth />} />
+            <Route path="/marketplace" element={<MobileMarketplace />} />
+            <Route path="/marketplace/coin/:id" element={<CoinDetail />} />
+            
+            {/* Protected routes */}
+            <Route path="/profile/setup" element={
+              <ProtectedRoute>
+                <ProfileSetup />
+              </ProtectedRoute>
+            } />
+            <Route path="/authenticate" element={
+              <ProtectedRoute>
+                <MobileAuthenticate />
+              </ProtectedRoute>
+            } />
+            <Route path="/messages" element={
+              <ProtectedRoute>
+                <MobileMessages />
+              </ProtectedRoute>
+            } />
+            <Route path="/messages/:id" element={
+              <ProtectedRoute>
+                <MobileChatRoom />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <MobileProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/seller" element={
+              <ProtectedRoute>
+                <SellerDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

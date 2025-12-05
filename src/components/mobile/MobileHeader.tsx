@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Search, Bell, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MobileHeaderProps {
   showSearch?: boolean;
@@ -9,6 +10,9 @@ interface MobileHeaderProps {
 }
 
 export function MobileHeader({ showSearch = true, title, onSearchClick }: MobileHeaderProps) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
   return (
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/40 safe-area-inset-top">
       <div className="flex items-center justify-between h-14 px-4">
@@ -42,14 +46,24 @@ export function MobileHeader({ showSearch = true, title, onSearchClick }: Mobile
             <Bell className="w-5 h-5" />
             <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full" />
           </motion.button>
-          <Link to="/profile">
-            <motion.div
+          {user ? (
+            <Link to="/profile">
+              <motion.div
+                whileTap={{ scale: 0.95 }}
+                className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden"
+              >
+                <User className="w-4 h-4 text-muted-foreground" />
+              </motion.div>
+            </Link>
+          ) : (
+            <motion.button
               whileTap={{ scale: 0.95 }}
-              className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden"
+              onClick={() => navigate('/auth')}
+              className="px-3 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-full"
             >
-              <User className="w-4 h-4 text-muted-foreground" />
-            </motion.div>
-          </Link>
+              Sign In
+            </motion.button>
+          )}
         </div>
       </div>
     </header>
