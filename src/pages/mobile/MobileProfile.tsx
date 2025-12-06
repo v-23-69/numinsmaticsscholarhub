@@ -281,53 +281,68 @@ export default function MobileProfile() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 bg-charcoal/50"
+          className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
           onClick={() => setShowSettings(false)}
         >
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
-            className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl p-6 safe-area-inset-bottom"
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 rounded-full bg-border mx-auto mb-6" />
-            <nav className="space-y-2">
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
+            <nav className="p-4 space-y-2 pb-safe">
               <Link
                 to="/profile/setup"
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-secondary"
+                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
               >
-                <div className="flex items-center gap-3">
-                  <Edit2 className="w-5 h-5" />
-                  <span>Edit Profile</span>
+                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
+                  <Edit2 className="w-5 h-5 text-gold" />
                 </div>
+                <span className="flex-1 font-medium">Edit Profile</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </Link>
+              <Link
+                to="/settings"
+                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
+              >
+                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
+                  <Settings className="w-5 h-5 text-gold" />
+                </div>
+                <span className="flex-1 font-medium">Settings & Theme</span>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </Link>
               <Link
                 to="/settings/kyc"
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-secondary"
+                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
               >
-                <div className="flex items-center gap-3">
-                  <UserCheck className="w-5 h-5" />
-                  <span>KYC Verification</span>
+                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 text-gold" />
                 </div>
+                <span className="flex-1 font-medium">KYC Verification</span>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </Link>
               <Link
                 to="/dashboard/seller"
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-secondary"
+                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
               >
-                <div className="flex items-center gap-3">
-                  <Award className="w-5 h-5" />
-                  <span>Seller Dashboard</span>
+                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
+                  <Award className="w-5 h-5 text-gold" />
                 </div>
+                <span className="flex-1 font-medium">Seller Dashboard</span>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </Link>
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-secondary text-destructive"
+                className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-destructive/10 transition-colors card-embossed text-destructive"
               >
-                <LogOut className="w-5 h-5" />
-                <span>Log Out</span>
+                <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center">
+                  <LogOut className="w-5 h-5" />
+                </div>
+                <span className="font-medium">Log Out</span>
               </button>
             </nav>
           </motion.div>
