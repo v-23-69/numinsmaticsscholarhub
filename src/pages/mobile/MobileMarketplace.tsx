@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, SlidersHorizontal, X, ChevronDown, ShoppingCart, Heart, Grid, List } from "lucide-react";
-import { PremiumHeader } from "@/components/mobile/PremiumHeader";
+import { Search, SlidersHorizontal, X, ChevronDown, Grid } from "lucide-react";
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { MarketplaceCoinCard } from "@/components/mobile/MarketplaceCoinCard";
 import { CategoryGrid4x4 } from "@/components/mobile/CategoryGrid4x4";
+import { CartDrawer } from "@/components/shopify/CartDrawer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { categories, marketplaceCoins } from "@/data/nshMockData";
 import { useToast } from "@/hooks/use-toast";
+import { useCartStore } from "@/stores/cartStore";
+import coinMughalFront from "@/assets/coin-mughal-front.jpg";
 
 const sortOptions = [
   { id: "newest", label: "Newest First" },
@@ -34,6 +36,7 @@ export default function MobileMarketplace() {
   const [selectedRarity, setSelectedRarity] = useState<string[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const { toast } = useToast();
+  const addItem = useCartStore(state => state.addItem);
 
   const handleCategorySelect = (slug: string) => {
     setActiveCategory(slug);
@@ -52,22 +55,66 @@ export default function MobileMarketplace() {
     });
   };
 
-  const addToCart = (coinId: string) => {
+  const handleAddToCart = (coin: typeof marketplaceCoins[0]) => {
+    addItem({
+      product: {
+        node: {
+          id: coin.id,
+          title: coin.title,
+          description: coin.era || "",
+          handle: coin.id,
+          priceRange: {
+            minVariantPrice: {
+              amount: coin.price.toString(),
+              currencyCode: "INR",
+            },
+          },
+          images: {
+            edges: coin.images.map((img, i) => ({
+              node: { url: img, altText: coin.title }
+            })),
+          },
+          variants: { edges: [] },
+          options: [],
+        },
+      },
+      variantId: `gid://shopify/ProductVariant/${coin.id}`,
+      variantTitle: "Default",
+      price: { amount: coin.price.toString(), currencyCode: "INR" },
+      quantity: 1,
+      selectedOptions: [],
+    });
     toast({
       title: "Added to cart",
-      description: "Item has been added to your cart",
+      description: coin.title,
       duration: 2000,
     });
   };
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <PremiumHeader
-        title="Market"
-        showSearch
-        showCart
-        onSearchClick={() => setShowSearch(true)}
-      />
+      {/* Header with Coin Logo */}
+      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-gold/20 safe-area-inset-top">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+        <div className="flex items-center justify-between h-14 px-4">
+          <div className="flex items-center gap-2">
+            {/* Coin Logo */}
+            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gold">
+              <img src={coinMughalFront} alt="NSH" className="w-full h-full object-cover" />
+            </div>
+            <span className="font-serif font-bold gold-text">Market</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSearch(true)}
+              className="p-2 rounded-full hover:bg-muted/50"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <CartDrawer />
+          </div>
+        </div>
+      </header>
 
       {/* Category Toggle & Stats */}
       <section className="sticky top-14 z-30 bg-background/95 backdrop-blur-lg border-b border-border/40">
@@ -76,7 +123,7 @@ export default function MobileMarketplace() {
             onClick={() => setShowCategories(!showCategories)}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-              showCategories ? "bg-gold text-primary-foreground" : "bg-secondary text-secondary-foreground"
+              showCategories ? "bg-gold text-background" : "bg-secondary text-secondary-foreground"
             )}
           >
             <Grid className="w-4 h-4" />
@@ -108,15 +155,13 @@ export default function MobileMarketplace() {
 
       {/* Toolbar */}
       <section className="px-4 py-3 flex items-center justify-between border-b border-border/40">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowSort(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-sm"
-          >
-            {sortOptions.find(s => s.id === sortBy)?.label}
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={() => setShowSort(true)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-sm"
+        >
+          {sortOptions.find(s => s.id === sortBy)?.label}
+          <ChevronDown className="w-4 h-4" />
+        </button>
         <button
           onClick={() => setShowFilters(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold/10 text-gold text-sm font-medium border border-gold/30"
@@ -140,7 +185,7 @@ export default function MobileMarketplace() {
                 {...coin}
                 isWishlisted={wishlist.includes(coin.id)}
                 onWishlistToggle={() => toggleWishlist(coin.id)}
-                onAddToCart={() => addToCart(coin.id)}
+                onAddToCart={() => handleAddToCart(coin)}
               />
             </motion.div>
           ))}
@@ -228,7 +273,7 @@ export default function MobileMarketplace() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl p-6 safe-area-inset-bottom"
+              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-area-inset-bottom border-t border-gold/20"
               onClick={e => e.stopPropagation()}
             >
               <div className="w-10 h-1 rounded-full bg-border mx-auto mb-6" />
@@ -243,7 +288,7 @@ export default function MobileMarketplace() {
                     }}
                     className={cn(
                       "w-full p-3 rounded-xl text-left transition-colors",
-                      sortBy === option.id ? "bg-gold text-primary-foreground" : "hover:bg-secondary"
+                      sortBy === option.id ? "bg-gold text-background font-medium" : "hover:bg-secondary"
                     )}
                   >
                     {option.label}
@@ -270,7 +315,7 @@ export default function MobileMarketplace() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto safe-area-inset-bottom"
+              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto safe-area-inset-bottom border-t border-gold/20"
               onClick={e => e.stopPropagation()}
             >
               <div className="w-10 h-1 rounded-full bg-border mx-auto mb-6" />
@@ -311,7 +356,7 @@ export default function MobileMarketplace() {
                       className={cn(
                         "px-4 py-2 rounded-xl text-sm border transition-all",
                         selectedMetals.includes(metal)
-                          ? "bg-gold text-primary-foreground border-gold"
+                          ? "bg-gold text-background border-gold"
                           : "bg-secondary border-border"
                       )}
                     >
@@ -334,26 +379,13 @@ export default function MobileMarketplace() {
                       className={cn(
                         "px-4 py-2 rounded-xl text-sm border transition-all",
                         selectedRarity.includes(rarity)
-                          ? "bg-gold text-primary-foreground border-gold"
+                          ? "bg-gold text-background border-gold"
                           : "bg-secondary border-border"
                       )}
                     >
                       {rarity}
                     </button>
                   ))}
-                </div>
-              </div>
-
-              {/* Seller */}
-              <div className="mb-6">
-                <h4 className="font-medium mb-3">Seller</h4>
-                <div className="flex gap-2">
-                  <button className="px-4 py-2 rounded-xl text-sm bg-secondary border border-border">
-                    Verified Only
-                  </button>
-                  <button className="px-4 py-2 rounded-xl text-sm bg-secondary border border-border">
-                    In Stock
-                  </button>
                 </div>
               </div>
 
