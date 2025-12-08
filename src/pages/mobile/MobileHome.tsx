@@ -1,122 +1,114 @@
 import { motion } from "framer-motion";
-import { MobileHeader } from "@/components/mobile/MobileHeader";
-import { MobileNavBar } from "@/components/mobile/MobileNavBar";
-import { MobileStoriesStrip } from "@/components/mobile/MobileStoriesStrip";
-import { QuickActionsBar } from "@/components/mobile/QuickActionsBar";
-import { FeedPostCard } from "@/components/mobile/FeedPostCard";
-import { TrustBadge } from "@/components/mobile/TrustBadge";
-import coinMughalFront from "@/assets/coin-mughal-front.jpg";
-import coinBritishFront from "@/assets/coin-british-front.jpg";
-import coinSultanateFront from "@/assets/coin-sultanate-front.jpg";
-import coinAncientFront from "@/assets/coin-ancient-front.jpg";
-
-const mockPosts = [
-  {
-    id: "1",
-    user: {
-      id: "u1",
-      username: "heritage_coins",
-      avatar: "https://i.pravatar.cc/150?img=10",
-      isVerified: true,
-    },
-    images: [coinMughalFront, coinBritishFront],
-    content: "Just acquired this stunning Shah Jahan Gold Mohur from 1628. The calligraphy detail is exceptional! 🪙✨ #MughalCoins #Numismatics",
-    coinId: "1",
-    coinTitle: "Shah Jahan Gold Mohur",
-    coinPrice: 285000,
-    likeCount: 234,
-    commentCount: 18,
-    timeAgo: "2 hours ago",
-  },
-  {
-    id: "2",
-    user: {
-      id: "u2",
-      username: "coin_expert_raj",
-      avatar: "https://i.pravatar.cc/150?img=12",
-      isVerified: true,
-    },
-    images: [coinBritishFront],
-    content: "Pro tip: When examining Victoria-era coins, always check the edge lettering. It's one of the key authenticity markers. 📚",
-    likeCount: 456,
-    commentCount: 42,
-    timeAgo: "4 hours ago",
-  },
-  {
-    id: "3",
-    user: {
-      id: "u3",
-      username: "ancient_treasures",
-      avatar: "https://i.pravatar.cc/150?img=15",
-      isVerified: false,
-    },
-    images: [coinAncientFront, coinSultanateFront],
-    content: "New arrival! Gupta Dynasty gold dinar, 4th century AD. The archer king depiction is beautifully preserved. DM for details.",
-    coinId: "4",
-    coinTitle: "Gupta Dynasty Gold Dinar",
-    coinPrice: 450000,
-    likeCount: 567,
-    commentCount: 89,
-    timeAgo: "6 hours ago",
-  },
-  {
-    id: "4",
-    user: {
-      id: "u4",
-      username: "delhi_sultanate",
-      avatar: "https://i.pravatar.cc/150?img=20",
-      isVerified: true,
-    },
-    images: [coinSultanateFront],
-    content: "Rare find! Delhi Sultanate silver tanka with crisp Arabic inscription. These medieval treasures tell stories of empire. 🏰",
-    coinId: "3",
-    coinTitle: "Delhi Sultanate Silver Tanka",
-    coinPrice: 78000,
-    likeCount: 189,
-    commentCount: 24,
-    timeAgo: "8 hours ago",
-  },
-];
+import { PremiumHeader } from "@/components/mobile/PremiumHeader";
+import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
+import { AdminStoriesStrip } from "@/components/mobile/AdminStoriesStrip";
+import { FeedShowcaseCard, FeedCompactCard } from "@/components/mobile/FeedShowcaseCard";
+import { homeFeedItems } from "@/data/nshMockData";
+import { Sparkles, TrendingUp, Shield, Award } from "lucide-react";
 
 export default function MobileHome() {
   return (
     <div className="min-h-screen bg-background pb-20">
-      <MobileHeader />
+      <PremiumHeader />
       
       <main>
-        {/* Stories */}
-        <MobileStoriesStrip />
+        {/* Admin-Only Stories Strip */}
+        <AdminStoriesStrip />
         
-        {/* Quick Actions */}
-        <QuickActionsBar />
-        
-        {/* Trust Badge */}
-        <TrustBadge />
-        
-        {/* Feed */}
-        <section className="divide-y divide-border/40">
-          {mockPosts.map((post, index) => (
-            <motion.div
-              key={post.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <FeedPostCard {...post} />
-            </motion.div>
-          ))}
-        </section>
-        
-        {/* Load more indicator */}
-        <div className="py-8 text-center">
-          <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="w-5 h-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
-            Loading more...
+        {/* Quick Stats Banner */}
+        <section className="px-4 py-3">
+          <div className="flex items-center gap-3 overflow-x-auto scrollbar-elegant pb-1">
+            <QuickStatBadge
+              icon={<TrendingUp className="w-4 h-4" />}
+              label="15,240"
+              sublabel="Coins Listed"
+            />
+            <QuickStatBadge
+              icon={<Shield className="w-4 h-4" />}
+              label="2,340"
+              sublabel="Verified Sellers"
+            />
+            <QuickStatBadge
+              icon={<Award className="w-4 h-4" />}
+              label="98%"
+              sublabel="Auth Accuracy"
+            />
           </div>
+        </section>
+
+        {/* Divider */}
+        <div className="divider-gold mx-4" />
+
+        {/* Welcome Section */}
+        <section className="px-4 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2"
+          >
+            <Sparkles className="w-5 h-5 text-gold" />
+            <h2 className="font-serif text-lg font-semibold">Curated For You</h2>
+          </motion.div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Featured coins, expert insights & exclusive offers
+          </p>
+        </section>
+
+        {/* Feed - Curated Cards */}
+        <section className="space-y-2">
+          {homeFeedItems.map((item, index) => {
+            // Alternate between showcase and compact cards
+            if (index % 3 === 0 || item.type === "featured" || item.type === "auction") {
+              return (
+                <FeedShowcaseCard
+                  key={item.id}
+                  {...item}
+                />
+              );
+            }
+            return (
+              <FeedCompactCard
+                key={item.id}
+                {...item}
+              />
+            );
+          })}
+        </section>
+
+        {/* Load More */}
+        <div className="py-8 text-center">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-gold/40 text-gold text-sm font-medium"
+          >
+            Load More
+          </motion.button>
         </div>
       </main>
       
-      <MobileNavBar />
+      <PremiumNavBar />
+    </div>
+  );
+}
+
+function QuickStatBadge({ 
+  icon, 
+  label, 
+  sublabel 
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  sublabel: string; 
+}) {
+  return (
+    <div className="shrink-0 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-card border border-border/60">
+      <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center text-gold">
+        {icon}
+      </div>
+      <div>
+        <p className="font-bold text-sm">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{sublabel}</p>
+      </div>
     </div>
   );
 }

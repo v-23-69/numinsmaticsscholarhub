@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
-  Settings, Grid3X3, Bookmark, Star, ChevronRight, 
-  Shield, Edit2, LogOut, Award, UserCheck, User
+  Settings, Bookmark, Star, ChevronRight, 
+  Shield, Edit2, LogOut, Award, UserCheck, User, ShoppingBag, FileText, Palette
 } from "lucide-react";
-import { MobileNavBar } from "@/components/mobile/MobileNavBar";
+import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,100 +23,63 @@ interface Profile {
   bio: string | null;
   is_verified: boolean | null;
   badges: string[];
-  follower_count: number | null;
-  following_count: number | null;
-  post_count: number | null;
 }
 
 const tabs = [
-  { id: "posts", label: "Posts", icon: Grid3X3 },
-  { id: "collections", label: "Collections", icon: Bookmark },
-  { id: "wishlist", label: "Wishlist", icon: Star },
-  { id: "reviews", label: "Reviews", icon: Award },
+  { id: "wishlist", label: "Wishlist", icon: Bookmark },
+  { id: "orders", label: "Orders", icon: ShoppingBag },
+  { id: "collections", label: "Collections", icon: Star },
+  { id: "auth-requests", label: "Auth Requests", icon: FileText },
 ];
 
-const mockPosts = [
-  { id: "1", image: coinMughalFront },
-  { id: "2", image: coinBritishFront },
-  { id: "3", image: coinAncientFront },
-  { id: "4", image: coinMughalFront },
-  { id: "5", image: coinBritishFront },
-  { id: "6", image: coinAncientFront },
+const mockWishlist = [
+  { id: "1", image: coinMughalFront, title: "Shah Jahan Mohur", price: 285000 },
+  { id: "2", image: coinBritishFront, title: "Victoria Rupee", price: 45000 },
+  { id: "3", image: coinAncientFront, title: "Gupta Dinar", price: 450000 },
 ];
 
 export default function MobileProfile() {
-  const [activeTab, setActiveTab] = useState("posts");
+  const [activeTab, setActiveTab] = useState("wishlist");
   const [showSettings, setShowSettings] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-    }
+    if (user) fetchProfile();
   }, [user]);
 
   const fetchProfile = async () => {
     if (!user) return;
-    
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) throw error;
-      
-      setProfile({
-        ...data,
-        badges: Array.isArray(data.badges) ? data.badges as string[] : [],
-      });
+      const { data } = await supabase.from('profiles').select('*').eq('user_id', user.id).single();
+      if (data) setProfile({ ...data, badges: Array.isArray(data.badges) ? data.badges as string[] : [] });
     } catch (error) {
       console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-      toast({
-        title: 'Signed out',
-        description: 'You have been logged out successfully.',
-      });
-      navigate('/');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to sign out. Please try again.',
-        variant: 'destructive',
-      });
-    }
+    await signOut();
+    toast({ title: 'Signed out successfully' });
+    navigate('/');
   };
 
   if (!user) {
     return (
       <div className="min-h-screen bg-background pb-20 flex flex-col items-center justify-center px-6">
-        <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-4">
-          <User className="h-10 w-10 text-muted-foreground" />
+        <div className="story-ring w-24 h-24 mb-6">
+          <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
+            <User className="h-12 w-12 text-muted-foreground" />
+          </div>
         </div>
-        <h2 className="text-xl font-bold text-foreground mb-2">Sign in to NSH</h2>
-        <p className="text-muted-foreground text-center mb-6">
-          Access your profile, collections, and connect with other collectors.
-        </p>
-        <Button 
-          onClick={() => navigate('/auth')}
-          className="w-full max-w-xs h-12 rounded-xl bg-primary hover:bg-emerald-light"
-        >
+        <h2 className="text-xl font-serif font-bold mb-2">Welcome to NSH</h2>
+        <p className="text-muted-foreground text-center mb-6">Sign in to access your profile and collections</p>
+        <Button onClick={() => navigate('/auth')} className="w-full max-w-xs btn-gold h-12 rounded-xl">
           Sign In / Sign Up
         </Button>
-        <MobileNavBar />
+        <PremiumNavBar />
       </div>
     );
   }
@@ -124,15 +87,11 @@ export default function MobileProfile() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border/40 safe-area-inset-top">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/40 safe-area-inset-top">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
         <div className="flex items-center justify-between h-14 px-4">
-          <span className="font-serif font-semibold text-lg">
-            {profile?.username || user.email?.split('@')[0] || 'Profile'}
-          </span>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-2 -mr-2"
-          >
+          <span className="font-serif font-semibold text-lg">{profile?.username || 'Profile'}</span>
+          <button onClick={() => setShowSettings(!showSettings)} className="p-2 -mr-2">
             <Settings className="w-5 h-5" />
           </button>
         </div>
@@ -140,137 +99,71 @@ export default function MobileProfile() {
 
       <main className="px-4">
         {/* Profile Header */}
-        <section className="py-4">
-          <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="relative">
-              {profile?.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.display_name || ''}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-gold/30"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center border-2 border-gold/30">
-                  <User className="w-10 h-10 text-muted-foreground" />
-                </div>
-              )}
-              {profile?.is_verified && (
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald flex items-center justify-center border-2 border-background">
-                  <Shield className="w-3 h-3 text-primary-foreground" />
-                </div>
-              )}
-            </div>
-
-            {/* Stats */}
-            <div className="flex-1 grid grid-cols-4 gap-2 text-center">
-              <div>
-                <p className="text-lg font-semibold">{profile?.post_count || 0}</p>
-                <p className="text-xs text-muted-foreground">Posts</p>
-              </div>
-              <div>
-                <p className="text-lg font-semibold">{(profile?.follower_count || 0).toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Followers</p>
-              </div>
-              <div>
-                <p className="text-lg font-semibold">{profile?.following_count || 0}</p>
-                <p className="text-xs text-muted-foreground">Following</p>
-              </div>
-              <div>
-                <p className="text-lg font-semibold">0</p>
-                <p className="text-xs text-muted-foreground">Collections</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Name & Bio */}
-          <div className="mt-4">
-            <div className="flex items-center gap-2">
-              <h1 className="font-semibold">
-                {profile?.display_name || user.email?.split('@')[0] || 'Collector'}
-              </h1>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {profile?.bio || 'No bio yet'}
-            </p>
-            
-            {/* Badges */}
-            {profile?.badges && profile.badges.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-3">
-                {profile.badges.map((badge) => (
-                  <span
-                    key={badge}
-                    className="px-2 py-1 text-[10px] font-medium bg-secondary text-secondary-foreground rounded-full"
-                  >
-                    {badge}
-                  </span>
-                ))}
+        <section className="py-6 text-center">
+          <div className="story-ring story-ring-shimmer w-24 h-24 mx-auto mb-4">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
+                <User className="w-10 h-10 text-muted-foreground" />
               </div>
             )}
           </div>
+          
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h1 className="font-serif font-bold text-xl">{profile?.display_name || 'Collector'}</h1>
+            {profile?.is_verified && <Shield className="w-5 h-5 text-gold" />}
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">{profile?.bio || 'Coin collector & enthusiast'}</p>
+          
+          {profile?.badges && profile.badges.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2">
+              {profile.badges.map((badge) => (
+                <span key={badge} className="badge-gold">{badge}</span>
+              ))}
+            </div>
+          )}
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 mt-4">
-            <Button 
-              className="flex-1 btn-primary rounded-xl h-9"
-              onClick={() => navigate('/profile/setup')}
-            >
-              <Edit2 className="w-4 h-4 mr-2" />
-              Edit Profile
+          <div className="flex gap-2 mt-4 max-w-xs mx-auto">
+            <Button className="flex-1 btn-gold rounded-xl h-10" onClick={() => navigate('/profile/setup')}>
+              <Edit2 className="w-4 h-4 mr-2" />Edit
             </Button>
-            <Button variant="outline" className="flex-1 rounded-xl h-9">
-              Share Profile
-            </Button>
+            <Button variant="outline" className="flex-1 rounded-xl h-10 border-gold/40">Share</Button>
           </div>
         </section>
 
         {/* Tabs */}
         <section className="sticky top-14 z-30 -mx-4 px-4 bg-background border-b border-border/60">
           <div className="flex">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-3 border-b-2 transition-colors",
-                    activeTab === tab.id
-                      ? "border-foreground text-foreground"
-                      : "border-transparent text-muted-foreground"
-                  )}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-xs font-medium hidden sm:block">{tab.label}</span>
-                </button>
-              );
-            })}
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 py-3 border-b-2 transition-colors",
+                  activeTab === tab.id ? "border-gold text-gold" : "border-transparent text-muted-foreground"
+                )}
+              >
+                <tab.icon className="w-5 h-5" />
+              </button>
+            ))}
           </div>
         </section>
 
-        {/* Content Grid */}
-        <section className="py-2 -mx-4">
-          {activeTab === "posts" && (
-            <div className="grid grid-cols-3 gap-0.5">
-              {mockPosts.map((post) => (
-                <Link
-                  key={post.id}
-                  to={`/post/${post.id}`}
-                  className="aspect-square"
-                >
-                  <img
-                    src={post.image}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
+        {/* Content */}
+        <section className="py-4">
+          {activeTab === "wishlist" && (
+            <div className="grid grid-cols-3 gap-2">
+              {mockWishlist.map((item) => (
+                <Link key={item.id} to={`/marketplace/coin/${item.id}`} className="aspect-square rounded-xl overflow-hidden border border-gold/20">
+                  <img src={item.image} alt="" className="w-full h-full object-cover" />
                 </Link>
               ))}
             </div>
           )}
-          
-          {activeTab !== "posts" && (
-            <div className="px-4 py-12 text-center text-muted-foreground">
-              <p>No {activeTab} yet</p>
+          {activeTab !== "wishlist" && (
+            <div className="py-12 text-center text-muted-foreground">
+              <p>No {tabs.find(t => t.id === activeTab)?.label.toLowerCase()} yet</p>
             </div>
           )}
         </section>
@@ -278,70 +171,22 @@ export default function MobileProfile() {
 
       {/* Settings Drawer */}
       {showSettings && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
-          onClick={() => setShowSettings(false)}
-        >
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-border" />
-            </div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 25 }} className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center pt-3 pb-2"><div className="w-10 h-1 rounded-full bg-border" /></div>
             <nav className="p-4 space-y-2 pb-safe">
-              <Link
-                to="/profile/setup"
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
-              >
-                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                  <Edit2 className="w-5 h-5 text-gold" />
-                </div>
+              <Link to="/settings" className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed">
+                <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center"><Palette className="w-5 h-5 text-gold" /></div>
+                <span className="flex-1 font-medium">Theme & Settings</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </Link>
+              <Link to="/profile/setup" className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed">
+                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center"><Edit2 className="w-5 h-5 text-gold" /></div>
                 <span className="flex-1 font-medium">Edit Profile</span>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </Link>
-              <Link
-                to="/settings"
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
-              >
-                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                  <Settings className="w-5 h-5 text-gold" />
-                </div>
-                <span className="flex-1 font-medium">Settings & Theme</span>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </Link>
-              <Link
-                to="/settings/kyc"
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
-              >
-                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                  <UserCheck className="w-5 h-5 text-gold" />
-                </div>
-                <span className="flex-1 font-medium">KYC Verification</span>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </Link>
-              <Link
-                to="/dashboard/seller"
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-colors card-embossed"
-              >
-                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                  <Award className="w-5 h-5 text-gold" />
-                </div>
-                <span className="flex-1 font-medium">Seller Dashboard</span>
-                <ChevronRight className="w-5 h-5 text-muted-foreground" />
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-destructive/10 transition-colors card-embossed text-destructive"
-              >
-                <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center">
-                  <LogOut className="w-5 h-5" />
-                </div>
+              <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-destructive/10 card-embossed text-destructive">
+                <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center"><LogOut className="w-5 h-5" /></div>
                 <span className="font-medium">Log Out</span>
               </button>
             </nav>
@@ -349,7 +194,7 @@ export default function MobileProfile() {
         </motion.div>
       )}
 
-      <MobileNavBar />
+      <PremiumNavBar />
     </div>
   );
 }
