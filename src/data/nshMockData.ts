@@ -1,0 +1,166 @@
+// Mock data for NSH marketplace
+
+import coinMughalFront from "@/assets/coin-mughal-front.jpg";
+import coinBritishFront from "@/assets/coin-british-front.jpg";
+import coinSultanateFront from "@/assets/coin-sultanate-front.jpg";
+import coinAncientFront from "@/assets/coin-ancient-front.jpg";
+
+export const categories = [
+  { id: "1", slug: "medals", title: "Medals" },
+  { id: "2", slug: "sultanates", title: "Sultanates" },
+  { id: "3", slug: "early-medieval", title: "Early Medieval" },
+  { id: "4", slug: "east-india-company", title: "East India Company" },
+  { id: "5", slug: "hindu-coins-medieval", title: "Hindu Coins of Medieval India" },
+  { id: "6", slug: "independent-kingdoms", title: "Independent Kingdoms" },
+  { id: "7", slug: "indo-french", title: "Indo French" },
+  { id: "8", slug: "princely-states", title: "Princely States" },
+  { id: "9", slug: "islamic-world", title: "Islamic World" },
+  { id: "10", slug: "indo-portuguese", title: "Indo Portuguese" },
+  { id: "11", slug: "british-india", title: "British India" },
+  { id: "12", slug: "mughal-india", title: "Mughal India" },
+  { id: "13", slug: "ancient-india", title: "Ancient India" },
+  { id: "14", slug: "republic-india", title: "Republic India" },
+  { id: "15", slug: "indo-dutch", title: "Indo Dutch" },
+  { id: "16", slug: "foreign-coins", title: "Foreign Coins" },
+];
+
+export const marketplaceCoins = [
+  {
+    id: "1",
+    title: "Shah Jahan Gold Mohur",
+    era: "Mughal Empire, 1628-1658",
+    price: 285000,
+    images: [coinMughalFront, coinMughalFront],
+    rarity: "very-rare" as const,
+    metal: "Gold",
+    seller: {
+      name: "Heritage Coins",
+      isVerified: true,
+      trustScore: 4.9,
+    },
+  },
+  {
+    id: "2",
+    title: "Victoria Queen Silver Rupee",
+    era: "British India, 1862",
+    price: 45000,
+    images: [coinBritishFront, coinBritishFront],
+    rarity: "rare" as const,
+    metal: "Silver",
+    seller: {
+      name: "Royal Numismatics",
+      isVerified: true,
+      trustScore: 4.7,
+    },
+  },
+  {
+    id: "3",
+    title: "Delhi Sultanate Silver Tanka",
+    era: "Delhi Sultanate, 1320-1414",
+    price: 78000,
+    images: [coinSultanateFront, coinSultanateFront],
+    rarity: "rare" as const,
+    metal: "Silver",
+    seller: {
+      name: "Medieval Treasures",
+      isVerified: false,
+      trustScore: 4.5,
+    },
+  },
+  {
+    id: "4",
+    title: "Gupta Dynasty Gold Dinar",
+    era: "Gupta Empire, 4th Century AD",
+    price: 450000,
+    images: [coinAncientFront, coinAncientFront],
+    rarity: "very-rare" as const,
+    metal: "Gold",
+    seller: {
+      name: "Ancient Collectors",
+      isVerified: true,
+      trustScore: 5.0,
+    },
+  },
+  {
+    id: "5",
+    title: "Akbar Copper Dam",
+    era: "Mughal Empire, 1556-1605",
+    price: 12000,
+    images: [coinMughalFront, coinMughalFront],
+    rarity: "common" as const,
+    metal: "Copper",
+    seller: {
+      name: "Budget Coins India",
+      isVerified: true,
+      trustScore: 4.3,
+    },
+  },
+  {
+    id: "6",
+    title: "East India Company Rupee",
+    era: "British India, 1835",
+    price: 28000,
+    images: [coinBritishFront, coinBritishFront],
+    rarity: "common" as const,
+    metal: "Silver",
+    seller: {
+      name: "Colonial Coins",
+      isVerified: true,
+      trustScore: 4.6,
+    },
+  },
+];
+
+export const homeFeedItems = [
+  {
+    id: "1",
+    type: "featured" as const,
+    title: "Rare Mughal Gold Mohur - New Arrival",
+    description: "Exquisite Shah Jahan era gold mohur with pristine calligraphy. Expert verified authentic.",
+    image: coinMughalFront,
+    coinId: "1",
+    coinPrice: 285000,
+    coinEra: "Mughal Empire, 1628",
+    coinRarity: "Very Rare",
+    ctaLabel: "View Coin",
+  },
+  {
+    id: "2",
+    type: "education" as const,
+    title: "How to Identify Authentic Mughal Coins",
+    description: "Learn the key markers that distinguish genuine Mughal coins from reproductions.",
+    image: "https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?w=800",
+    ctaLabel: "Read Article",
+    ctaLink: "/learn/mughal-authentication",
+  },
+  {
+    id: "3",
+    type: "promotion" as const,
+    title: "Get Your Coins Authenticated",
+    description: "First 5 coins free! Expert verification with detailed reports.",
+    image: "https://images.unsplash.com/photo-1618761714954-0b8cd0026356?w=800",
+    ctaLabel: "Authenticate Now",
+    ctaLink: "/authenticate",
+  },
+  {
+    id: "4",
+    type: "auction" as const,
+    title: "Upcoming Auction: Ancient India Collection",
+    description: "Rare Gupta and Maurya dynasty coins. Live bidding starts Dec 15.",
+    image: coinAncientFront,
+    ctaLabel: "Register for Auction",
+    ctaLink: "/auctions/ancient-india",
+  },
+  {
+    id: "5",
+    type: "featured" as const,
+    title: "British India Collector's Set",
+    description: "Complete Victoria era set including rare proofs and special editions.",
+    image: coinBritishFront,
+    coinId: "2",
+    coinPrice: 125000,
+    coinEra: "British India, 1837-1901",
+    coinRarity: "Rare",
+    ctaLabel: "View Collection",
+  },
+];
