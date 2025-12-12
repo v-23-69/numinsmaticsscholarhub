@@ -95,19 +95,70 @@ const StoriesManager = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label className="text-gray-300">Media URL</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    placeholder="https://..."
-                                    className="bg-black/20 border-admin-border text-white"
-                                    value={newItem.media_url}
-                                    onChange={(e) => setNewItem({ ...newItem, media_url: e.target.value })}
-                                />
-                                <Button size="icon" variant="outline" className="border-admin-gold/30">
-                                    <Upload className="w-4 h-4 text-admin-gold" />
-                                </Button>
+                            <Label className="text-gray-300">Media (Image/Video)</Label>
+
+                            <div className="flex gap-4 items-start">
+                                {/* Preview */}
+                                <div className="w-24 h-24 bg-black/40 rounded border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    {newItem.media_url ? (
+                                        newItem.media_type === 'video' ? (
+                                            <video src={newItem.media_url} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <img src={newItem.media_url} alt="" className="w-full h-full object-cover" />
+                                        )
+                                    ) : (
+                                        <div className="text-gray-600 text-xs text-center px-1">No Media</div>
+                                    )}
+                                </div>
+
+                                {/* Inputs */}
+                                <div className="flex-1 space-y-3">
+                                    <div>
+                                        <Label className="text-xs text-gray-500 mb-1 block">Upload File</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                type="file"
+                                                accept="image/*,video/*"
+                                                disabled={uploading}
+                                                className="bg-black/20 border-admin-border text-white file:text-admin-gold file:bg-transparent file:border-0 file:cursor-pointer"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+
+                                                    setUploading(true);
+                                                    const type = file.type.startsWith('video') ? 'video' : 'image';
+                                                    setNewItem(prev => ({ ...prev, media_type: type }));
+
+                                                    try {
+                                                        const { uploadImage } = await import('@/utils/uploadUtils');
+                                                        const url = await uploadImage(file, 'stories');
+                                                        if (url) setNewItem(prev => ({ ...prev, media_url: url }));
+                                                        else toast.error("Upload failed");
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        toast.error("Upload error");
+                                                    } finally {
+                                                        setUploading(false);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-px bg-white/10 flex-1" />
+                                        <span className="text-[10px] text-gray-500 uppercase">Or URL</span>
+                                        <div className="h-px bg-white/10 flex-1" />
+                                    </div>
+
+                                    <Input
+                                        placeholder="https://example.com/image.jpg"
+                                        className="bg-black/20 border-admin-border text-white text-xs h-8"
+                                        value={newItem.media_url}
+                                        onChange={(e) => setNewItem({ ...newItem, media_url: e.target.value })}
+                                    />
+                                </div>
                             </div>
-                            <p className="text-xs text-gray-500">Supports Images or MP4</p>
                         </div>
 
                         <div className="space-y-2">

@@ -19,7 +19,7 @@ export function SwipeContainer({ children }: SwipeContainerProps) {
 
   const handleDragEnd = (_: any, info: PanInfo) => {
     const { offset, velocity } = info;
-    
+
     // Calculate if swipe was significant enough
     if (Math.abs(offset.x) > SWIPE_THRESHOLD || Math.abs(velocity.x) > 500) {
       if (currentIndex === -1) return;
@@ -52,27 +52,14 @@ export function SwipeContainer({ children }: SwipeContainerProps) {
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, x: 20 }}
-          animate={{ 
-            opacity: 1, 
+          animate={{
+            opacity: 1,
             x: dragX * 0.1,
-            transition: { duration: 0.2 }
+            transition: { duration: 0.15, ease: "easeOut" }
           }}
           exit={{ opacity: 0, x: -20 }}
           className="relative"
         >
-          {/* Gold shimmer overlay during swipe */}
-          {Math.abs(dragX) > 20 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: Math.min(Math.abs(dragX) / 200, 0.3) }}
-              className="fixed inset-0 pointer-events-none z-[100]"
-              style={{
-                background: dragX > 0
-                  ? "linear-gradient(to right, hsl(var(--gold) / 0.2), transparent 40%)"
-                  : "linear-gradient(to left, hsl(var(--gold) / 0.2), transparent 40%)",
-              }}
-            />
-          )}
           {children}
         </motion.div>
       </AnimatePresence>

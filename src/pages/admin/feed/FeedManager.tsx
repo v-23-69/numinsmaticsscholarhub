@@ -147,13 +147,45 @@ const FeedManager = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-gray-300">Image URL</Label>
-                            <Input
-                                placeholder="https://..."
-                                className="bg-black/20 border-admin-border text-white"
-                                value={newItem.image_url}
-                                onChange={(e) => setNewItem({ ...newItem, image_url: e.target.value })}
-                            />
+                            <Label className="text-gray-300">Image</Label>
+                            <div className="flex gap-2 items-center">
+                                {newItem.image_url && (
+                                    <div className="w-10 h-10 rounded bg-black/40 overflow-hidden flex-shrink-0 border border-white/10">
+                                        <img src={newItem.image_url} alt="" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <div className="flex-1 space-y-2">
+                                    <Input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file) return;
+
+                                            setLoading(true);
+                                            try {
+                                                const { uploadImage } = await import('@/utils/uploadUtils');
+                                                // Using 'misc' bucket for feed items
+                                                const url = await uploadImage(file, 'misc');
+                                                if (url) setNewItem({ ...newItem, image_url: url });
+                                                else toast.error("Upload failed");
+                                            } catch (err) {
+                                                console.error(err);
+                                                toast.error("Upload error");
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        className="bg-black/20 border-admin-border text-white file:text-admin-gold file:bg-transparent file:border-0 file:mr-2 file:cursor-pointer"
+                                    />
+                                    <Input
+                                        placeholder="Or paste URL..."
+                                        className="bg-black/20 border-admin-border text-white text-xs"
+                                        value={newItem.image_url}
+                                        onChange={(e) => setNewItem({ ...newItem, image_url: e.target.value })}
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="space-y-2">

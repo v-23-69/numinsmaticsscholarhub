@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, SlidersHorizontal, X, ChevronDown, Grid } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronDown, Grid, Loader2 } from "lucide-react";
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { MarketplaceCoinCard } from "@/components/mobile/MarketplaceCoinCard";
 import { CategoryGrid4x4 } from "@/components/mobile/CategoryGrid4x4";
@@ -8,17 +8,17 @@ import { CartDrawer } from "@/components/shopify/CartDrawer";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import { categories, marketplaceCoins } from "@/data/nshMockData";
+import { categories as mockCategories } from "@/data/nshMockData";
 import { useToast } from "@/hooks/use-toast";
 import { useCartStore } from "@/stores/cartStore";
 import coinMughalFront from "@/assets/coin-mughal-front.jpg";
+import { supabase } from "@/integrations/supabase/client";
 
 const sortOptions = [
   { id: "newest", label: "Newest First" },
   { id: "price-low", label: "Price: Low to High" },
   { id: "price-high", label: "Price: High to Low" },
-  { id: "popular", label: "Most Viewed" },
-  { id: "rarity", label: "Rarity" },
+  { id: "oldest", label: "Oldest First" },
 ];
 
 const metalOptions = ["Gold", "Silver", "Copper", "Bronze"];
@@ -29,23 +29,107 @@ export default function MobileMarketplace() {
   const [showFilters, setShowFilters] = useState(false);
   const [showSort, setShowSort] = useState(false);
   const [showCategories, setShowCategories] = useState(true);
+
+  // Real Data State
+  const [listings, setListings] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Filter States
   const [activeCategory, setActiveCategory] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
   const [priceRange, setPriceRange] = useState([0, 500000]);
   const [selectedMetals, setSelectedMetals] = useState<string[]>([]);
-  const [selectedRarity, setSelectedRarity] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [wishlist, setWishlist] = useState<string[]>([]);
   const { toast } = useToast();
   const addItem = useCartStore(state => state.addItem);
 
-  const handleCategorySelect = (slug: string) => {
-    setActiveCategory(slug);
+  // Fetch Data
+  useEffect(() => {
+    const fetchMarketplaceData = async () => {
+      setLoading(true);
+      try {
+        // 1. Fetch Categories
+        const { data: catData } = await supabase
+          .from('coin_categories')
+          .select('*');
+
+        if (catData && catData.length > 0) {
+          setCategories([{ id: 'all', slug: 'all', name: 'All Coins' }, ...catData]);
+        } else {
+          // Fallback to mock categories if DB is empty
+          setCategories([{ id: "all", slug: "all", title: "All Coins" }, ...mockCategories]);
+        }
+
+        // 2. Build Query for Listings
+        let query = supabase
+          .from('coin_listings')
+          .select(`
+                    *,
+                    coin_images ( url, display_order ),
+                    seller:seller_id ( display_name, avatar_url, trust_score )
+                `)
+          .eq('status', 'active');
+
+        // Apply Filters
+        if (activeCategory !== 'all') {
+          query = query.eq('category_id', activeCategory);
+        }
+
+        // Sort
+        if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
+        if (sortBy === 'oldest') query = query.order('created_at', { ascending: true });
+        if (sortBy === 'price-low') query = query.order('price', { ascending: true });
+        if (sortBy === 'price-high') query = query.order('price', { ascending: false });
+
+        const { data: listingData, error } = await query;
+
+        if (error) console.error("Error fetching listings:", error);
+
+        if (listingData) {
+          // Client-side filtering for complex text/array searches that are harder in single SQL query
+          let filtered = listingData;
+
+          // Price Range
+          filtered = filtered.filter(l => l.price >= priceRange[0] && l.price <= priceRange[1]);
+
+          // Metals
+          if (selectedMetals.length > 0) {
+            filtered = filtered.filter(l => l.metal_type && selectedMetals.includes(l.metal_type));
+          }
+
+          // Search Text
+          if (searchQuery) {
+            const q = searchQuery.toLowerCase();
+            filtered = filtered.filter(l =>
+              l.title.toLowerCase().includes(q) ||
+              l.description?.toLowerCase().includes(q)
+            );
+          }
+
+          setListings(filtered);
+        }
+
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMarketplaceData();
+  }, [activeCategory, sortBy, showFilters, searchQuery]); // Re-run when these change
+
+  const handleCategorySelect = (id: string) => {
+    setActiveCategory(id);
     setShowCategories(false);
   };
 
   const toggleWishlist = (coinId: string) => {
-    setWishlist(prev => 
-      prev.includes(coinId) 
+    setWishlist(prev =>
+      prev.includes(coinId)
         ? prev.filter(id => id !== coinId)
         : [...prev, coinId]
     );
@@ -55,38 +139,41 @@ export default function MobileMarketplace() {
     });
   };
 
-  const handleAddToCart = (coin: typeof marketplaceCoins[0]) => {
+  const handleAddToCart = (listing: any) => {
+    // Adapter to match Shopify cart expected format
+    const mainImage = listing.coin_images?.[0]?.url || "";
+
     addItem({
       product: {
         node: {
-          id: coin.id,
-          title: coin.title,
-          description: coin.era || "",
-          handle: coin.id,
+          id: listing.id,
+          title: listing.title,
+          description: listing.description || "",
+          handle: listing.id,
           priceRange: {
             minVariantPrice: {
-              amount: coin.price.toString(),
-              currencyCode: "INR",
+              amount: listing.price.toString(),
+              currencyCode: listing.currency || "INR",
             },
           },
           images: {
-            edges: coin.images.map((img, i) => ({
-              node: { url: img, altText: coin.title }
-            })),
+            edges: listing.coin_images?.map((img: any) => ({
+              node: { url: img.url, altText: listing.title }
+            })) || [],
           },
           variants: { edges: [] },
           options: [],
         },
       },
-      variantId: `gid://shopify/ProductVariant/${coin.id}`,
+      variantId: `gid://shopify/ProductVariant/${listing.id}`, // Fake ID for now
       variantTitle: "Default",
-      price: { amount: coin.price.toString(), currencyCode: "INR" },
+      price: { amount: listing.price.toString(), currencyCode: listing.currency || "INR" },
       quantity: 1,
       selectedOptions: [],
     });
     toast({
       title: "Added to cart",
-      description: coin.title,
+      description: listing.title,
       duration: 2000,
     });
   };
@@ -130,7 +217,7 @@ export default function MobileMarketplace() {
             Categories
           </button>
           <span className="text-sm text-muted-foreground">
-            <strong className="text-foreground">{marketplaceCoins.length}</strong> coins
+            <strong className="text-foreground">{listings.length}</strong> coins
           </span>
         </div>
       </section>
@@ -145,7 +232,11 @@ export default function MobileMarketplace() {
             className="overflow-hidden bg-card/50 border-b border-border/40"
           >
             <CategoryGrid4x4
-              categories={[{ id: "all", slug: "all", title: "All Coins" }, ...categories]}
+              categories={categories.map(c => ({
+                id: c.id,
+                slug: c.id, // Using ID as slug for simplification in DB mode
+                title: c.name || c.title
+              }))}
               activeCategory={activeCategory}
               onCategorySelect={handleCategorySelect}
             />
@@ -173,23 +264,41 @@ export default function MobileMarketplace() {
 
       {/* Coins Grid */}
       <main className="px-4 py-4">
-        <div className="grid grid-cols-2 gap-3">
-          {marketplaceCoins.map((coin, index) => (
-            <motion.div
-              key={coin.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <MarketplaceCoinCard
-                {...coin}
-                isWishlisted={wishlist.includes(coin.id)}
-                onWishlistToggle={() => toggleWishlist(coin.id)}
-                onAddToCart={() => handleAddToCart(coin)}
-              />
-            </motion.div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-gold" />
+          </div>
+        ) : listings.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground">
+            <p>No coins found matching your criteria.</p>
+            <Button variant="link" onClick={() => { setActiveCategory('all'); setPriceRange([0, 500000]); setSearchQuery(""); }} className="mt-2 text-gold">
+              Reset Filters
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {listings.map((listing, index) => (
+              <motion.div
+                key={listing.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <MarketplaceCoinCard
+                  id={listing.id}
+                  title={listing.title}
+                  era={listing.year ? listing.year.toString() : ""}
+                  price={listing.price}
+                  // Extract first image from relation
+                  images={listing.coin_images?.map((img: any) => img.url) || []}
+                  isWishlisted={wishlist.includes(listing.id)}
+                  onWishlistToggle={() => toggleWishlist(listing.id)}
+                  onAddToCart={() => handleAddToCart(listing)}
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* Load More */}
         <div className="mt-6 text-center">
@@ -218,6 +327,8 @@ export default function MobileMarketplace() {
                     placeholder="Search coins, sellers, eras..."
                     className="w-full pl-10 pr-4 py-3 bg-secondary rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
                     autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
                 <button onClick={() => setShowSearch(false)}>

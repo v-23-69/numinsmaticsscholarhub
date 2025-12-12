@@ -18,6 +18,7 @@ import MobileMessages from "./pages/mobile/MobileMessages";
 import MobileChatRoom from "./pages/mobile/MobileChatRoom";
 import SellerDashboard from "./pages/mobile/SellerDashboard";
 import MobileAuth from "./pages/mobile/MobileAuth";
+import MobileSell from "./pages/mobile/MobileSell";
 import ProfileSetup from "./pages/mobile/ProfileSetup";
 import MobileSettings from "./pages/mobile/MobileSettings";
 import CoinDetail from "./pages/CoinDetail";
@@ -84,6 +85,11 @@ function AppRoutes() {
       <Route path="/dashboard/seller" element={
         <ProtectedRoute>
           <SellerDashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/sell" element={
+        <ProtectedRoute>
+          <MobileSell />
         </ProtectedRoute>
       } />
 

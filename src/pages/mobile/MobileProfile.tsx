@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { 
-  Settings, Bookmark, Star, ChevronRight, 
+import {
+  Settings, Bookmark, Star, ChevronRight,
   Shield, Edit2, LogOut, Award, UserCheck, User, ShoppingBag, FileText, Palette
 } from "lucide-react";
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
@@ -91,9 +91,17 @@ export default function MobileProfile() {
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
         <div className="flex items-center justify-between h-14 px-4">
           <span className="font-serif font-semibold text-lg">{profile?.username || 'Profile'}</span>
-          <button onClick={() => setShowSettings(!showSettings)} className="p-2 -mr-2">
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setActiveTab('wishlist')} className="p-2 relative">
+              <Bookmark className="w-5 h-5" />
+            </button>
+            <div className="relative">
+              <ShoppingBag className="w-5 h-5 mr-1" />
+            </div>
+            <button onClick={() => setShowSettings(!showSettings)} className="p-2 -mr-2">
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -109,13 +117,13 @@ export default function MobileProfile() {
               </div>
             )}
           </div>
-          
+
           <div className="flex items-center justify-center gap-2 mb-1">
             <h1 className="font-serif font-bold text-xl">{profile?.display_name || 'Collector'}</h1>
             {profile?.is_verified && <Shield className="w-5 h-5 text-gold" />}
           </div>
           <p className="text-sm text-muted-foreground mb-3">{profile?.bio || 'Coin collector & enthusiast'}</p>
-          
+
           {profile?.badges && profile.badges.length > 0 && (
             <div className="flex flex-wrap justify-center gap-2">
               {profile.badges.map((badge) => (
