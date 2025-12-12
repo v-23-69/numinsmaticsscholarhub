@@ -66,21 +66,22 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // NSH Custom Colors
+        // NSH Premium Royal Black-Gold Theme
+        admin: {
+          bg: "#0A0A0A", // Matte Black
+          surface: "#111213", // Charcoal Stone
+          surface2: "#141414", // Slightly lighter surface
+          gold: "#D4AF37", // Royal Gold
+          gold2: "#B0892F", // Antique Bronze
+          text: "#F5F4F1", // Ivory White
+          border: "rgba(212, 175, 55, 0.2)", // Gold border with opacity
+        },
         gold: {
-          DEFAULT: "hsl(var(--gold))",
-          light: "hsl(var(--gold-light))",
-          dark: "hsl(var(--gold-dark))",
-          muted: "hsl(var(--gold-muted))",
+          DEFAULT: "#D4AF37",
+          light: "#F4D06F",
+          dark: "#B0892F",
+          muted: "rgba(212, 175, 55, 0.4)",
         },
-        stone: {
-          DEFAULT: "hsl(var(--stone))",
-          light: "hsl(var(--stone-light))",
-          dark: "hsl(var(--stone-dark))",
-        },
-        ivory: "hsl(var(--ivory))",
-        cream: "hsl(var(--cream))",
-        parchment: "hsl(var(--parchment))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -96,8 +97,9 @@ export default {
         md: "0 4px 12px -2px hsl(var(--foreground) / 0.08)",
         lg: "0 12px 32px -4px hsl(var(--foreground) / 0.12)",
         xl: "0 24px 48px -8px hsl(var(--foreground) / 0.16)",
-        gold: "0 4px 24px -4px hsl(var(--gold) / 0.35)",
-        glow: "0 0 20px hsl(var(--gold) / 0.2)",
+        gold: "0 4px 24px -4px rgba(212, 175, 55, 0.25)",
+        "gold-glow": "0 0 20px rgba(212, 175, 55, 0.15)",
+        "admin-card": "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)",
       },
       keyframes: {
         "accordion-down": {
@@ -113,8 +115,8 @@ export default {
           "100%": { transform: "translateX(100%)" },
         },
         "pulse-gold": {
-          "0%, 100%": { boxShadow: "0 0 15px hsl(var(--gold) / 0.3)" },
-          "50%": { boxShadow: "0 0 25px hsl(var(--gold) / 0.5)" },
+          "0%, 100%": { boxShadow: "0 0 15px rgba(212, 175, 55, 0.2)" },
+          "50%": { boxShadow: "0 0 25px rgba(212, 175, 55, 0.4)" },
         },
         float: {
           "0%, 100%": { transform: "translateY(0)" },
@@ -157,3 +159,4 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+

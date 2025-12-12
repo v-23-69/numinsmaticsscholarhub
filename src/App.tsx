@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import AdminRoute from "./components/auth/AdminRoute";
 import { SwipeContainer } from "@/components/mobile/SwipeContainer";
 
 // Mobile Pages
@@ -21,6 +22,17 @@ import ProfileSetup from "./pages/mobile/ProfileSetup";
 import MobileSettings from "./pages/mobile/MobileSettings";
 import CoinDetail from "./pages/CoinDetail";
 import NotFound from "./pages/NotFound";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import StoriesManager from "./pages/admin/stories/StoriesManager";
+import FeedManager from "./pages/admin/feed/FeedManager";
+import FeaturedCoinsManager from "./pages/admin/coins/FeaturedCoinsManager";
+import ExpertAuthDashboard from "./pages/admin/auth/ExpertAuthDashboard";
+import UserManager from "./pages/admin/users/UserManager";
+import ShopifySyncManager from "./pages/admin/shopify/ShopifySyncManager";
+import DiscountManager from "./pages/admin/commerce/DiscountManager";
+import AdminOrderDashboard from "./pages/admin/commerce/AdminOrderDashboard";
+import AdminSettings from "./pages/admin/settings/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -37,7 +49,7 @@ function AppRoutes() {
       <Route path="/auth" element={<MobileAuth />} />
       <Route path="/marketplace" element={<MobileMarketplace />} />
       <Route path="/marketplace/coin/:id" element={<CoinDetail />} />
-      
+
       {/* Protected routes */}
       <Route path="/profile/setup" element={
         <ProtectedRoute>
@@ -74,7 +86,26 @@ function AppRoutes() {
           <SellerDashboard />
         </ProtectedRoute>
       } />
-      
+
+
+      {/* Admin Routes - Strictly Secured */}
+      <Route path="/admin" element={
+        <AdminRoute>
+          <AdminLayout />
+        </AdminRoute>
+      }>
+        <Route index element={<AdminDashboard />} />
+        <Route path="stories" element={<StoriesManager />} />
+        <Route path="feed" element={<FeedManager />} />
+        <Route path="featured" element={<FeaturedCoinsManager />} />
+        <Route path="experts" element={<ExpertAuthDashboard />} />
+        <Route path="users" element={<UserManager />} />
+        <Route path="discounts" element={<DiscountManager />} />
+        <Route path="orders" element={<AdminOrderDashboard />} />
+        <Route path="shopify" element={<ShopifySyncManager />} />
+        <Route path="settings" element={<AdminSettings />} />
+      </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
