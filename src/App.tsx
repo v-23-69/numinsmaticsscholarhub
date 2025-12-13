@@ -19,6 +19,7 @@ import MobileChatRoom from "./pages/mobile/MobileChatRoom";
 import SellerDashboard from "./pages/mobile/SellerDashboard";
 import MobileAuth from "./pages/mobile/MobileAuth";
 import MobileSell from "./pages/mobile/MobileSell";
+import MobileExpertChat from "./pages/mobile/MobileExpertChat";
 import ProfileSetup from "./pages/mobile/ProfileSetup";
 import MobileSettings from "./pages/mobile/MobileSettings";
 import CoinDetail from "./pages/CoinDetail";
@@ -94,6 +95,12 @@ function AppRoutes() {
       } />
 
 
+      <Route path="/expert-chat/:id" element={
+        <ProtectedRoute>
+          <MobileExpertChat />
+        </ProtectedRoute>
+      } />
+
       {/* Admin Routes - Strictly Secured */}
       <Route path="/admin" element={
         <AdminRoute>
@@ -116,12 +123,11 @@ function AppRoutes() {
     </Routes>
   );
 
-  // Wrap main pages with swipe container
-  if (isSwipePage) {
-    return <SwipeContainer>{content}</SwipeContainer>;
-  }
-
-  return content;
+  return (
+    <div className="min-h-screen pb-20 md:pb-0 bg-background">
+      {content}
+    </div>
+  );
 }
 
 const App = () => (

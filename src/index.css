@@ -337,12 +337,7 @@
     );
   }
 
-  .story-ring-shimmer::after {
-    content: "";
-    @apply absolute inset-0 rounded-full;
-    background: linear-gradient(90deg, transparent, hsl(var(--gold) / 0.4), transparent);
-    animation: shimmer 2s infinite;
-  }
+
 
   /* ─────────────────────────────────────────────────────────────────────────
      Gold Accents

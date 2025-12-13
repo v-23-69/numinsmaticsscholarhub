@@ -192,7 +192,7 @@ export function AdminStoriesStrip() {
           {/* NSH Official story indicator */}
           <div className="flex flex-col items-center gap-1 shrink-0">
             <div className="relative">
-              <div className="story-ring story-ring-shimmer w-16 h-16">
+              <div className="story-ring w-16 h-16">
                 <div className="w-full h-full rounded-full bg-gradient-to-br from-gold to-gold-dark flex items-center justify-center">
                   <span className="text-xl font-serif font-bold text-primary-foreground">N</span>
                 </div>
@@ -212,7 +212,7 @@ export function AdminStoriesStrip() {
               <div
                 className={cn(
                   "relative w-16 h-16 rounded-full",
-                  story.isViewed ? "story-ring-inactive" : "story-ring story-ring-shimmer"
+                  story.isViewed ? "story-ring-inactive" : "story-ring"
                 )}
               >
                 <img

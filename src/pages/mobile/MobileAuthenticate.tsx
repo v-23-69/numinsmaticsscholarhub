@@ -1,69 +1,150 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Camera, Image, ArrowLeft, Check, 
-  Zap, MessageCircle, Wallet, Shield, Star
+import {
+  Camera, Image, ArrowLeft, Check,
+  Zap, MessageCircle, Wallet, Shield, Star, Loader2, Upload
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { uploadImage } from "@/utils/uploadUtils";
 
-type Step = "capture" | "review" | "payment" | "success";
+type Step = "capture" | "review" | "payment";
 
 export default function MobileAuthenticate() {
   const [step, setStep] = useState<Step>("capture");
   const [captures, setCaptures] = useState<{ front?: string; back?: string }>({});
-  const [freeQuota] = useState({ used: 2, total: 5 });
-  const [walletBalance] = useState(150);
-  const [isPaid, setIsPaid] = useState(false);
+  const [capturesFiles, setCapturesFiles] = useState<{ front?: File; back?: File }>({});
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [showSourceSelector, setShowSourceSelector] = useState<"front" | "back" | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const quotaRemaining = freeQuota.total - freeQuota.used;
-  const isFreeUpload = quotaRemaining > 0;
+  useEffect(() => {
+    if (user) fetchWalletBalance();
+  }, [user]);
 
-  const handleCapture = (side: "front" | "back") => {
-    setCaptures((prev) => ({
-      ...prev,
-      [side]: `https://images.unsplash.com/photo-1621264448270-9ef00e88a935?w=400&h=400&fit=crop`,
-    }));
-  };
-
-  const handleSubmit = () => {
-    if (isFreeUpload) {
-      setIsPaid(true);
-      setStep("success");
-    } else {
-      setStep("payment");
+  const fetchWalletBalance = async () => {
+    // Check wallet balance
+    const { data, error } = await (supabase.from('nsh_wallets' as any) as any).select('balance').eq('user_id', user?.id).single();
+    if (data) setWalletBalance(data.balance);
+    else {
+      // Create wallet if not exists (for demo)
+      await supabase.rpc('claim_demo_coins' as any); // Or simplified insert
+      setWalletBalance(100); // Demo default
     }
   };
 
-  const handlePayment = () => {
-    toast({
-      title: "Payment Successful",
-      description: "₹49 deducted from NSH Wallet",
-    });
-    setIsPaid(true);
-    setStep("success");
+  const handleSourceSelect = async (source: "camera" | "gallery") => {
+    if (!showSourceSelector) return;
+
+    // Trigger hidden input
+    if (fileInputRef.current) {
+      if (source === "camera") {
+        fileInputRef.current.setAttribute("capture", "environment");
+      } else {
+        fileInputRef.current.removeAttribute("capture");
+      }
+      fileInputRef.current.click();
+    }
+    // Note: We close selector in the onChange handler
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const side = showSourceSelector;
+    if (file && side) {
+      const url = URL.createObjectURL(file);
+      setCaptures(prev => ({ ...prev, [side]: url }));
+      setCapturesFiles(prev => ({ ...prev, [side]: file }));
+    }
+    setShowSourceSelector(null); // Close drawer
+  };
+
+  const handlePaymentAndSubmit = async () => {
+    if (walletBalance < 50) {
+      toast({ title: "Insufficient Balance", description: "Please top up your NSH Wallet", variant: "destructive" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Upload Images
+      let frontUrl = captures.front;
+      let backUrl = captures.back;
+
+      if (capturesFiles.front) {
+        frontUrl = await uploadImage(capturesFiles.front, 'coins', 'auth');
+        if (!frontUrl) throw new Error("Failed to upload front image");
+      }
+      if (capturesFiles.back) {
+        backUrl = await uploadImage(capturesFiles.back, 'coins', 'auth');
+        if (!backUrl) throw new Error("Failed to upload back image");
+      }
+
+      // 2. Process Payment via RPC
+      const { data: success, error: payError } = await supabase.rpc('pay_for_auth_request' as any, { amount: 50 });
+      if (payError || !success) throw new Error("Payment failed");
+
+      // 3. Create Request
+      const { data: request, error: reqError } = await supabase.from('auth_requests').insert({
+        user_id: user?.id,
+        images: { front: frontUrl, back: backUrl }, // Store as JSON
+        status: 'pending',
+        paid: true,
+        paid_amount: 50
+      }).select().single();
+
+      if (reqError) throw new Error("Failed to create request");
+
+      // 4. Create Chat Thread
+      const { error: threadError } = await supabase.from('threads').insert({
+        type: 'expert',
+        participant_ids: [user?.id], // Add expert ID later when assigned
+        auth_request_id: request.id
+      });
+
+      if (threadError) throw new Error("Failed to initialize session");
+
+      toast({ title: "Success!", description: "Request submitted. Connecting to expert..." });
+
+      // Redirect to Chat
+      navigate(`/expert-chat/${request.id}`);
+
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
+      {/* Hidden File Input */}
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+      />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-gold/20 safe-area-inset-top">
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
         <div className="flex items-center h-14 px-4">
-          {step === "capture" ? (
-            <Link to="/" className="p-2 -ml-2">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-          ) : (
-            <button onClick={() => setStep("capture")} className="p-2 -ml-2">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
+          <button onClick={() => step === 'capture' ? navigate('/') : setStep('capture')} className="p-2 -ml-2">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <span className="flex-1 text-center font-serif font-semibold gold-text">
             Expert Authentication
           </span>
@@ -73,7 +154,7 @@ export default function MobileAuthenticate() {
 
       <main className="px-4 py-4">
         <AnimatePresence mode="wait">
-          {/* Capture Step - Direct Entry */}
+          {/* Capture Step */}
           {step === "capture" && (
             <motion.div
               key="capture"
@@ -82,144 +163,61 @@ export default function MobileAuthenticate() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-5"
             >
-              {/* Compact Quota & Wallet Row */}
-              <div className="flex gap-3">
-                {/* Free Uploads */}
-                <div className="flex-1 p-3 rounded-xl bg-card border border-gold/30">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Free Uploads</p>
-                      <div className="flex items-baseline gap-1 mt-1">
-                        <span className="text-2xl font-serif font-bold text-gold">{quotaRemaining}</span>
-                        <span className="text-sm text-muted-foreground">/{freeQuota.total}</span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">pairs remaining</p>
-                    </div>
-                    <div className="w-12 h-12 relative">
-                      <svg className="w-full h-full -rotate-90">
-                        <circle cx="24" cy="24" r="20" fill="none" stroke="hsl(var(--muted))" strokeWidth="4" />
-                        <circle
-                          cx="24" cy="24" r="20" fill="none"
-                          stroke="hsl(var(--gold))"
-                          strokeWidth="4"
-                          strokeDasharray={`${(quotaRemaining / freeQuota.total) * 126} 126`}
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                      <Shield className="absolute inset-0 m-auto w-4 h-4 text-gold" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* NSH Wallet */}
-                <div className="w-28 p-3 rounded-xl bg-card border border-gold/30">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">NSH Wallet</p>
-                  <p className="text-xl font-serif font-bold text-gold mt-1">₹{walletBalance}</p>
+              {/* Wallet Balance */}
+              <div className="flex justify-end">
+                <div className="px-3 py-1.5 rounded-full border border-gold/30 bg-gold/10 flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-gold" />
+                  <span className="font-bold text-gold text-sm">₹{walletBalance}</span>
                 </div>
               </div>
 
-              {/* Capture Title */}
               <div className="text-center py-2">
                 <h2 className="font-serif font-semibold text-lg">Capture Coin Images</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Take clear photos of both sides
+                  Front and Back photos required
                 </p>
               </div>
 
-              {/* Capture Cards */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Front */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleCapture("front")}
+                {/* Front Trigger */}
+                <button
+                  onClick={() => setShowSourceSelector('front')}
                   className={cn(
                     "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden",
-                    captures.front
-                      ? "border-2 border-gold bg-gold/5"
-                      : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
+                    captures.front ? "border-2 border-gold bg-gold/5" : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
                   )}
                 >
                   {captures.front ? (
-                    <>
-                      <img
-                        src={captures.front}
-                        alt="Front"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-gold/90 text-[10px] font-semibold text-background">
-                        FRONT
-                      </div>
-                      <div className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-gold flex items-center justify-center">
-                        <Check className="w-4 h-4 text-background" />
-                      </div>
-                    </>
+                    <img src={captures.front} alt="Front" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <div className="absolute inset-3 border border-gold/20 rounded-xl pointer-events-none" />
                       <Camera className="w-10 h-10 text-gold" />
                       <span className="text-sm font-medium text-gold">Front Side</span>
                     </>
                   )}
-                </motion.button>
+                </button>
 
-                {/* Back */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleCapture("back")}
+                {/* Back Trigger */}
+                <button
+                  onClick={() => setShowSourceSelector('back')}
                   className={cn(
                     "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden",
-                    captures.back
-                      ? "border-2 border-gold bg-gold/5"
-                      : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
+                    captures.back ? "border-2 border-gold bg-gold/5" : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
                   )}
                 >
                   {captures.back ? (
-                    <>
-                      <img
-                        src={captures.back}
-                        alt="Back"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 left-2 px-2 py-1 rounded-md bg-gold/90 text-[10px] font-semibold text-background">
-                        BACK
-                      </div>
-                      <div className="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-gold flex items-center justify-center">
-                        <Check className="w-4 h-4 text-background" />
-                      </div>
-                    </>
+                    <img src={captures.back} alt="Back" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <div className="absolute inset-3 border border-gold/20 rounded-xl pointer-events-none" />
                       <Camera className="w-10 h-10 text-gold" />
                       <span className="text-sm font-medium text-gold">Back Side</span>
                     </>
                   )}
-                </motion.button>
+                </button>
               </div>
 
-              {/* Gallery Option */}
-              <button className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gold/30 text-gold bg-card/50 hover:bg-gold/10 transition-colors">
-                <Image className="w-5 h-5" />
-                Choose from Gallery
-              </button>
-
-              {/* Tips */}
-              <div className="p-4 rounded-xl bg-card border border-border/50">
-                <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-gold" />
-                  Tips for best results
-                </h3>
-                <ul className="text-xs text-muted-foreground space-y-1.5">
-                  <li>• Use natural lighting, avoid harsh shadows</li>
-                  <li>• Keep camera steady and close to coin</li>
-                  <li>• Capture full coin with edges visible</li>
-                  <li>• Avoid reflections on shiny surfaces</li>
-                </ul>
-              </div>
-
-              {/* Continue */}
               <Button
-                className="w-full btn-gold rounded-xl h-14"
+                className="w-full btn-gold rounded-xl h-14 mt-8"
                 disabled={!captures.front || !captures.back}
                 onClick={() => setStep("review")}
               >
@@ -228,208 +226,94 @@ export default function MobileAuthenticate() {
             </motion.div>
           )}
 
-          {/* Review Step */}
+          {/* Payment Step (Combined Review + Pay) */}
           {step === "review" && (
             <motion.div
               key="review"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-5"
+              className="space-y-6"
             >
-              <h2 className="font-serif font-semibold text-lg text-center">Review Images</h2>
-              
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-center text-gold">Front</p>
-                  <div className="relative rounded-xl overflow-hidden border-2 border-gold/40">
-                    <img
-                      src={captures.front}
-                      alt="Front"
-                      className="aspect-square object-cover w-full"
-                    />
-                  </div>
+                <img src={captures.front} className="aspect-square rounded-xl object-cover border border-white/10" />
+                <img src={captures.back} className="aspect-square rounded-xl object-cover border border-white/10" />
+              </div>
+
+              <div className="p-6 rounded-2xl bg-card border border-gold/30 text-center space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Authentication Fee</p>
+                  <p className="text-4xl font-serif font-bold text-gold">50 <span className="text-lg">NSH</span></p>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-center text-gold">Back</p>
-                  <div className="relative rounded-xl overflow-hidden border-2 border-gold/40">
-                    <img
-                      src={captures.back}
-                      alt="Back"
-                      className="aspect-square object-cover w-full"
-                    />
-                  </div>
+
+                <div className="bg-black/20 p-3 rounded-lg flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Your Balance</span>
+                  <span className={walletBalance >= 50 ? "text-green-500" : "text-red-500"}>
+                    {walletBalance} NSH
+                  </span>
                 </div>
-              </div>
 
-              {/* Status Card */}
-              <div className={cn(
-                "p-4 rounded-xl border",
-                isFreeUpload 
-                  ? "bg-gold/10 border-gold/40" 
-                  : "bg-card border-border"
-              )}>
-                <div className="flex items-center gap-2 mb-2">
-                  {isFreeUpload ? (
-                    <>
-                      <Zap className="w-5 h-5 text-gold" />
-                      <span className="font-medium text-gold">Free Authentication</span>
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="w-5 h-5 text-gold" />
-                      <span className="font-medium">Pay with NSH Wallet</span>
-                    </>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {isFreeUpload 
-                    ? `You have ${quotaRemaining} free uploads remaining. This is free!`
-                    : `Fee: ₹49 • Wallet Balance: ₹${walletBalance}`
-                  }
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl h-12 border-gold/40 hover:bg-gold/10"
-                  onClick={() => setStep("capture")}
-                >
-                  Retake
-                </Button>
-                <Button
-                  className="flex-1 btn-gold rounded-xl h-12"
-                  onClick={handleSubmit}
-                >
-                  {isFreeUpload ? "Submit" : "Pay ₹49 & Submit"}
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Payment Step */}
-          {step === "payment" && (
-            <motion.div
-              key="payment"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              <div className="text-center py-4">
-                <h2 className="font-serif font-semibold text-xl">Payment</h2>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-card border border-gold/30 text-center">
-                <p className="text-sm text-muted-foreground mb-2">Authentication Fee</p>
-                <p className="text-4xl font-serif font-bold text-gold">₹49</p>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="font-medium">Pay with NSH Wallet</h3>
-                
-                <button
-                  onClick={handlePayment}
-                  className="w-full p-4 rounded-xl bg-gold/10 border-2 border-gold flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-gold" />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-semibold text-gold">NSH Wallet</p>
-                      <p className="text-xs text-muted-foreground">Balance: ₹{walletBalance}</p>
-                    </div>
-                  </div>
-                  <Check className="w-5 h-5 text-gold" />
-                </button>
-              </div>
-
-              <Button
-                className="w-full btn-gold rounded-xl h-14"
-                onClick={handlePayment}
-              >
-                Pay ₹49 with NSH Wallet
-              </Button>
-            </motion.div>
-          )}
-
-          {/* Success Step */}
-          {step === "success" && (
-            <motion.div
-              key="success"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              <div className="text-center py-6">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", delay: 0.2 }}
-                  className="w-20 h-20 rounded-full bg-gold/20 flex items-center justify-center mx-auto mb-4 border-2 border-gold"
-                >
-                  <Check className="w-10 h-10 text-gold" />
-                </motion.div>
-                <h2 className="font-serif font-semibold text-2xl gold-text mb-2">Success!</h2>
-                <p className="text-muted-foreground">
-                  Your coin images have been submitted for expert review.
-                </p>
-              </div>
-
-              {/* Expert Card */}
-              <div className="p-5 rounded-2xl bg-card border border-gold/30">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="story-ring w-16 h-16">
-                    <img
-                      src="https://i.pravatar.cc/150?img=12"
-                      alt="Expert"
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <p className="font-serif font-semibold text-lg">Dr. Anand Kumar</p>
-                    <p className="text-sm text-muted-foreground">Mughal Specialist • 15+ years</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star className="w-4 h-4 text-gold fill-gold" />
-                      <span className="text-sm font-medium">4.9</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 rounded-lg bg-muted/50 mb-4">
-                  <p className="text-sm text-muted-foreground">
-                    Estimated response time: <strong className="text-foreground">2-4 hours</strong>
-                  </p>
-                </div>
-                
-                {isPaid ? (
-                  <Link to="/messages/expert-1">
-                    <Button className="w-full btn-gold rounded-xl h-14">
-                      <MessageCircle className="w-5 h-5 mr-2" />
-                      Connect with Expert
-                    </Button>
-                  </Link>
-                ) : (
-                  <Button disabled className="w-full rounded-xl h-14 bg-muted text-muted-foreground">
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    Pay to Access Chat
+                {walletBalance < 50 && (
+                  <Button variant="outline" className="w-full border-gold/50 text-gold" onClick={() => toast({ title: "Coming Soon", description: "Top-up feature is in development" })}>
+                    Top Up Wallet
                   </Button>
                 )}
               </div>
 
               <Button
-                variant="outline"
-                className="w-full rounded-xl h-12 border-gold/40 hover:bg-gold/10"
-                onClick={() => navigate("/")}
+                className="w-full btn-gold rounded-xl h-14"
+                disabled={loading || walletBalance < 50}
+                onClick={handlePaymentAndSubmit}
               >
-                Back to Home
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Shield className="w-5 h-5 mr-2" />}
+                {loading ? "Processing..." : "Pay 50 NSH & Start Chat"}
               </Button>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+
+      {/* Source Selector Drawer (Popup) */}
+      <AnimatePresence>
+        {showSourceSelector && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end justify-center"
+            onClick={() => setShowSourceSelector(null)}
+          >
+            <motion.div
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+              className="w-full bg-card rounded-t-3xl p-6 space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-center font-medium text-lg mb-2">Select Image Source</h3>
+              <Button
+                variant="outline"
+                className="w-full h-14 text-lg border-white/10 bg-white/5 hover:bg-white/10 justify-start px-6"
+                onClick={() => handleSourceSelect("camera")}
+              >
+                <Camera className="w-6 h-6 mr-4 text-gold" />
+                Take Photo
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-14 text-lg border-white/10 bg-white/5 hover:bg-white/10 justify-start px-6"
+                onClick={() => handleSourceSelect("gallery")}
+              >
+                <Image className="w-6 h-6 mr-4 text-blue-400" />
+                Choose from Gallery
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground mt-2"
+                onClick={() => setShowSourceSelector(null)}
+              >
+                Cancel
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <PremiumNavBar />
     </div>

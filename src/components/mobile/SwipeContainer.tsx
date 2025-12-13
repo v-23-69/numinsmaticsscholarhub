@@ -43,7 +43,7 @@ export function SwipeContainer({ children }: SwipeContainerProps) {
       className="min-h-screen bg-background"
       drag="x"
       dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.2}
+      dragElastic={0.05}
       onDrag={(_, info) => setDragX(info.offset.x)}
       onDragEnd={handleDragEnd}
       style={{ touchAction: "pan-y" }}
@@ -54,10 +54,10 @@ export function SwipeContainer({ children }: SwipeContainerProps) {
           initial={{ opacity: 0, x: 20 }}
           animate={{
             opacity: 1,
-            x: dragX * 0.1,
-            transition: { duration: 0.15, ease: "easeOut" }
+            x: 0,
+            transition: { duration: 0.1, ease: "easeOut" }
           }}
-          exit={{ opacity: 0, x: -20 }}
+          exit={{ opacity: 0, x: -10 }}
           className="relative"
         >
           {children}

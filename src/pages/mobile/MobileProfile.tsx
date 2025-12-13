@@ -108,7 +108,7 @@ export default function MobileProfile() {
       <main className="px-4">
         {/* Profile Header */}
         <section className="py-6 text-center">
-          <div className="story-ring story-ring-shimmer w-24 h-24 mx-auto mb-4">
+          <div className="story-ring w-24 h-24 mx-auto mb-4">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
             ) : (
