@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -44,89 +45,94 @@ function AppRoutes() {
   const swipePages = ["/", "/marketplace", "/authenticate", "/profile"];
   const isSwipePage = swipePages.includes(location.pathname);
 
-  const content = (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<MobileHome />} />
-      <Route path="/auth" element={<MobileAuth />} />
-      <Route path="/marketplace" element={<MobileMarketplace />} />
-      <Route path="/marketplace/coin/:id" element={<CoinDetail />} />
-
-      {/* Protected routes */}
-      <Route path="/profile/setup" element={
-        <ProtectedRoute>
-          <ProfileSetup />
-        </ProtectedRoute>
-      } />
-      <Route path="/authenticate" element={
-        <ProtectedRoute>
-          <MobileAuthenticate />
-        </ProtectedRoute>
-      } />
-      <Route path="/messages" element={
-        <ProtectedRoute>
-          <MobileMessages />
-        </ProtectedRoute>
-      } />
-      <Route path="/messages/:id" element={
-        <ProtectedRoute>
-          <MobileChatRoom />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <MobileProfile />
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <MobileSettings />
-        </ProtectedRoute>
-      } />
-      <Route path="/dashboard/seller" element={
-        <ProtectedRoute>
-          <SellerDashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/sell" element={
-        <ProtectedRoute>
-          <MobileSell />
-        </ProtectedRoute>
-      } />
-
-
-      <Route path="/expert-chat/:id" element={
-        <ProtectedRoute>
-          <MobileExpertChat />
-        </ProtectedRoute>
-      } />
-
-      {/* Admin Routes - Strictly Secured */}
-      <Route path="/admin" element={
-        <AdminRoute>
-          <AdminLayout />
-        </AdminRoute>
-      }>
-        <Route index element={<AdminDashboard />} />
-        <Route path="stories" element={<StoriesManager />} />
-        <Route path="feed" element={<FeedManager />} />
-        <Route path="featured" element={<FeaturedCoinsManager />} />
-        <Route path="experts" element={<ExpertAuthDashboard />} />
-        <Route path="users" element={<UserManager />} />
-        <Route path="discounts" element={<DiscountManager />} />
-        <Route path="orders" element={<AdminOrderDashboard />} />
-        <Route path="shopify" element={<ShopifySyncManager />} />
-        <Route path="settings" element={<AdminSettings />} />
-      </Route>
-
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-
   return (
-    <div className="min-h-screen pb-20 md:pb-0 bg-background">
-      {content}
-    </div>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className="min-h-screen pb-20 md:pb-0 bg-background"
+      >
+        <Routes location={location}>
+          {/* Public routes */}
+          <Route path="/" element={<MobileHome />} />
+          <Route path="/auth" element={<MobileAuth />} />
+          <Route path="/marketplace" element={<MobileMarketplace />} />
+          <Route path="/marketplace/coin/:id" element={<CoinDetail />} />
+
+          {/* Protected routes */}
+          <Route path="/profile/setup" element={
+            <ProtectedRoute>
+              <ProfileSetup />
+            </ProtectedRoute>
+          } />
+          <Route path="/authenticate" element={
+            <ProtectedRoute>
+              <MobileAuthenticate />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages" element={
+            <ProtectedRoute>
+              <MobileMessages />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages/:id" element={
+            <ProtectedRoute>
+              <MobileChatRoom />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <MobileProfile />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <MobileSettings />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard/seller" element={
+            <ProtectedRoute>
+              <SellerDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/sell" element={
+            <ProtectedRoute>
+              <MobileSell />
+            </ProtectedRoute>
+          } />
+
+
+          <Route path="/expert-chat/:id" element={
+            <ProtectedRoute>
+              <MobileExpertChat />
+            </ProtectedRoute>
+          } />
+
+          {/* Admin Routes - Strictly Secured */}
+          <Route path="/admin" element={
+            <AdminRoute>
+              <AdminLayout />
+            </AdminRoute>
+          }>
+            <Route index element={<AdminDashboard />} />
+            <Route path="stories" element={<StoriesManager />} />
+            <Route path="feed" element={<FeedManager />} />
+            <Route path="featured" element={<FeaturedCoinsManager />} />
+            <Route path="experts" element={<ExpertAuthDashboard />} />
+            <Route path="users" element={<UserManager />} />
+            <Route path="discounts" element={<DiscountManager />} />
+            <Route path="orders" element={<AdminOrderDashboard />} />
+            <Route path="shopify" element={<ShopifySyncManager />} />
+            <Route path="settings" element={<AdminSettings />} />
+          </Route>
+
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 

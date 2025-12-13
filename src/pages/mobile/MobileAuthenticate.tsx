@@ -33,13 +33,25 @@ export default function MobileAuthenticate() {
   }, [user]);
 
   const fetchWalletBalance = async () => {
-    // Check wallet balance
-    const { data, error } = await (supabase.from('nsh_wallets' as any) as any).select('balance').eq('user_id', user?.id).single();
-    if (data) setWalletBalance(data.balance);
-    else {
-      // Create wallet if not exists (for demo)
-      await supabase.rpc('claim_demo_coins' as any); // Or simplified insert
-      setWalletBalance(100); // Demo default
+    if (!user) return;
+    try {
+      // Use RPC function to get balance (creates wallet if doesn't exist)
+      const { data, error } = await supabase.rpc('get_wallet_balance');
+      if (error) {
+        console.error('Error fetching wallet:', error);
+        // Fallback: try direct query
+        const { data: walletData } = await supabase
+          .from('nsh_wallets')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single();
+        setWalletBalance(walletData?.balance || 0);
+      } else {
+        setWalletBalance(data || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+      setWalletBalance(0);
     }
   };
 
@@ -70,8 +82,17 @@ export default function MobileAuthenticate() {
   };
 
   const handlePaymentAndSubmit = async () => {
+    if (!captures.front || !captures.back) {
+      toast({ title: "Missing Images", description: "Please upload both front and back images", variant: "destructive" });
+      return;
+    }
+
     if (walletBalance < 50) {
-      toast({ title: "Insufficient Balance", description: "Please top up your NSH Wallet", variant: "destructive" });
+      toast({ 
+        title: "Insufficient Balance", 
+        description: `You need 50 NSH coins. Current balance: ${walletBalance} NSH`, 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -91,37 +112,53 @@ export default function MobileAuthenticate() {
       }
 
       // 2. Process Payment via RPC
-      const { data: success, error: payError } = await supabase.rpc('pay_for_auth_request' as any, { amount: 50 });
-      if (payError || !success) throw new Error("Payment failed");
+      const { data: paymentSuccess, error: payError } = await supabase.rpc('pay_for_auth_request', { amount: 50 });
+      
+      if (payError) {
+        console.error('Payment error:', payError);
+        throw new Error("Payment failed: " + payError.message);
+      }
+      
+      if (!paymentSuccess) {
+        throw new Error("Insufficient balance or payment failed");
+      }
 
-      // 3. Create Request
-      const { data: request, error: reqError } = await supabase.from('auth_requests').insert({
-        user_id: user?.id,
-        images: { front: frontUrl, back: backUrl }, // Store as JSON
-        status: 'pending',
-        paid: true,
-        paid_amount: 50
-      }).select().single();
+      // 3. Create Request with images as array
+      const { data: request, error: reqError } = await supabase
+        .from('auth_requests')
+        .insert({
+          user_id: user?.id,
+          images: [frontUrl, backUrl], // Store as array
+          status: 'pending',
+          paid: true,
+          paid_amount: 50
+        })
+        .select()
+        .single();
 
-      if (reqError) throw new Error("Failed to create request");
+      if (reqError) {
+        console.error('Request creation error:', reqError);
+        throw new Error("Failed to create request: " + reqError.message);
+      }
 
-      // 4. Create Chat Thread
-      const { error: threadError } = await supabase.from('threads').insert({
-        type: 'expert',
-        participant_ids: [user?.id], // Add expert ID later when assigned
-        auth_request_id: request.id
+      // Update wallet balance display
+      await fetchWalletBalance();
+
+      toast({ 
+        title: "Payment Successful!", 
+        description: "Request submitted. Waiting for expert assignment..." 
       });
 
-      if (threadError) throw new Error("Failed to initialize session");
-
-      toast({ title: "Success!", description: "Request submitted. Connecting to expert..." });
-
-      // Redirect to Chat
+      // Redirect to chat (thread will be created when expert is assigned)
       navigate(`/expert-chat/${request.id}`);
 
     } catch (error: any) {
-      console.error(error);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      console.error('Error in payment/submit:', error);
+      toast({ 
+        title: "Error", 
+        description: error.message || "Something went wrong. Please try again.", 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
@@ -180,40 +217,66 @@ export default function MobileAuthenticate() {
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Front Trigger */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setShowSourceSelector('front')}
                   className={cn(
-                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden",
-                    captures.front ? "border-2 border-gold bg-gold/5" : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
+                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 transition-all overflow-hidden group",
+                    captures.front 
+                      ? "border-2 border-gold bg-gold/10 shadow-lg shadow-gold/30" 
+                      : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50 hover:bg-gold/5"
                   )}
                 >
                   {captures.front ? (
-                    <img src={captures.front} alt="Front" className="w-full h-full object-cover" />
+                    <>
+                      <img src={captures.front} alt="Front" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Check className="w-4 h-4 text-background" />
+                      </div>
+                    </>
                   ) : (
                     <>
-                      <Camera className="w-10 h-10 text-gold" />
-                      <span className="text-sm font-medium text-gold">Front Side</span>
+                      <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+                        <Camera className="w-8 h-8 text-gold" />
+                      </div>
+                      <span className="text-sm font-semibold text-gold">Front Side</span>
+                      <span className="text-xs text-muted-foreground">Tap to capture</span>
                     </>
                   )}
-                </button>
+                </motion.button>
 
                 {/* Back Trigger */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setShowSourceSelector('back')}
                   className={cn(
-                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden",
-                    captures.back ? "border-2 border-gold bg-gold/5" : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
+                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 transition-all overflow-hidden group",
+                    captures.back 
+                      ? "border-2 border-gold bg-gold/10 shadow-lg shadow-gold/30" 
+                      : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50 hover:bg-gold/5"
                   )}
                 >
                   {captures.back ? (
-                    <img src={captures.back} alt="Back" className="w-full h-full object-cover" />
+                    <>
+                      <img src={captures.back} alt="Back" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Check className="w-4 h-4 text-background" />
+                      </div>
+                    </>
                   ) : (
                     <>
-                      <Camera className="w-10 h-10 text-gold" />
-                      <span className="text-sm font-medium text-gold">Back Side</span>
+                      <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
+                        <Camera className="w-8 h-8 text-gold" />
+                      </div>
+                      <span className="text-sm font-semibold text-gold">Back Side</span>
+                      <span className="text-xs text-muted-foreground">Tap to capture</span>
                     </>
                   )}
-                </button>
+                </motion.button>
               </div>
 
               <Button
@@ -240,25 +303,41 @@ export default function MobileAuthenticate() {
                 <img src={captures.back} className="aspect-square rounded-xl object-cover border border-white/10" />
               </div>
 
-              <div className="p-6 rounded-2xl bg-card border border-gold/30 text-center space-y-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-6 rounded-2xl bg-card border-2 border-gold/30 shadow-lg shadow-gold/20 text-center space-y-5"
+              >
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Authentication Fee</p>
-                  <p className="text-4xl font-serif font-bold text-gold">50 <span className="text-lg">NSH</span></p>
+                  <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">Authentication Fee</p>
+                  <p className="text-5xl font-serif font-bold gold-text">50 <span className="text-2xl">NSH</span></p>
                 </div>
 
-                <div className="bg-black/20 p-3 rounded-lg flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Your Balance</span>
-                  <span className={walletBalance >= 50 ? "text-green-500" : "text-red-500"}>
-                    {walletBalance} NSH
-                  </span>
+                <div className="bg-muted/50 p-4 rounded-xl border border-gold/20 flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Your Balance</span>
+                  <div className="flex items-center gap-2">
+                    <Wallet className={cn("w-4 h-4", walletBalance >= 50 ? "text-gold" : "text-red-400")} />
+                    <span className={cn("font-bold text-lg", walletBalance >= 50 ? "text-gold" : "text-red-400")}>
+                      {walletBalance} NSH
+                    </span>
+                  </div>
                 </div>
 
                 {walletBalance < 50 && (
-                  <Button variant="outline" className="w-full border-gold/50 text-gold" onClick={() => toast({ title: "Coming Soon", description: "Top-up feature is in development" })}>
-                    Top Up Wallet
-                  </Button>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-gold/50 text-gold hover:bg-gold/10" 
+                      onClick={() => toast({ title: "Coming Soon", description: "Top-up feature is in development" })}
+                    >
+                      Top Up Wallet
+                    </Button>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
 
               <Button
                 className="w-full btn-gold rounded-xl h-14"

@@ -40,6 +40,7 @@ export default function MobileMarketplace() {
   const [sortBy, setSortBy] = useState("newest");
   const [priceRange, setPriceRange] = useState([0, 500000]);
   const [selectedMetals, setSelectedMetals] = useState<string[]>([]);
+  const [selectedRarity, setSelectedRarity] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [wishlist, setWishlist] = useState<string[]>([]);

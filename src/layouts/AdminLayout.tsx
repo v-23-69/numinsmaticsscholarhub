@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
     LayoutDashboard,
@@ -12,27 +12,52 @@ import {
     Menu,
     Trophy,
     Percent,
-    ShoppingCart as OrderIcon
+    ShoppingCart as OrderIcon,
+    MessageCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+
+type UserRole = 'admin' | 'expert' | 'user' | null;
 
 const AdminLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const [userRole, setUserRole] = useState<UserRole>(null);
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
-    const navItems = [
-        { icon: LayoutDashboard, label: "Home", path: "/admin" },
-        { icon: Star, label: "Stories", path: "/admin/stories" },
-        { icon: Star, label: "Feed", path: "/admin/feed" },
-        { icon: Trophy, label: "Featured", path: "/admin/featured" },
-        { icon: OrderIcon, label: "Orders", path: "/admin/orders" },
-        { icon: Percent, label: "Offers", path: "/admin/discounts" },
-        { icon: ShieldCheck, label: "Experts", path: "/admin/experts" },
-        { icon: ShoppingBag, label: "Shopify", path: "/admin/shopify" },
-        { icon: Users, label: "Users", path: "/admin/users" },
-        { icon: Settings, label: "Settings", path: "/admin/settings" },
+    useEffect(() => {
+        const fetchUserRole = async () => {
+            if (!user) return;
+            const { data } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+            if (data) setUserRole(data.role as UserRole);
+        };
+        if (user) fetchUserRole();
+    }, [user]);
+
+    // Admin sees all, Expert sees only chat
+    const allNavItems = [
+        { icon: LayoutDashboard, label: "Home", path: "/admin", roles: ['admin', 'expert'] },
+        { icon: Star, label: "Stories", path: "/admin/stories", roles: ['admin'] },
+        { icon: Star, label: "Feed", path: "/admin/feed", roles: ['admin'] },
+        { icon: Trophy, label: "Featured", path: "/admin/featured", roles: ['admin'] },
+        { icon: OrderIcon, label: "Orders", path: "/admin/orders", roles: ['admin'] },
+        { icon: Percent, label: "Offers", path: "/admin/discounts", roles: ['admin'] },
+        { icon: MessageCircle, label: "Expert Chat", path: "/admin/experts", roles: ['admin', 'expert'] },
+        { icon: ShoppingBag, label: "Shopify", path: "/admin/shopify", roles: ['admin'] },
+        { icon: Users, label: "Users", path: "/admin/users", roles: ['admin'] },
+        { icon: Settings, label: "Settings", path: "/admin/settings", roles: ['admin'] },
     ];
+
+    const navItems = allNavItems.filter(item => 
+        userRole && item.roles.includes(userRole)
+    );
 
     return (
         <div className="min-h-screen bg-admin-bg text-admin-text font-sans overflow-hidden flex flex-col">
@@ -42,7 +67,9 @@ const AdminLayout = () => {
                     <div className="bg-admin-gold/20 p-2 rounded-lg">
                         <ShieldCheck className="w-6 h-6 text-admin-gold" />
                     </div>
-                    <h1 className="text-xl font-serif text-admin-gold tracking-wide">NSH Admin</h1>
+                    <h1 className="text-xl font-serif text-admin-gold tracking-wide">
+                        {userRole === 'expert' ? 'NSH Expert' : 'NSH Admin'}
+                    </h1>
                 </div>
                 <button className="md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
                     <Menu className="w-6 h-6 text-admin-text" />
@@ -59,7 +86,7 @@ const AdminLayout = () => {
             {/* Mobile Bottom Nav */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-admin-surface border-t border-admin-border h-20 px-4 pb-2 pt-2 z-50 shadow-gold">
                 <div className="flex justify-between items-center h-full">
-                    {navItems.slice(0, 5).map((item) => {
+                    {navItems.slice(0, Math.min(5, navItems.length)).map((item) => {
                         const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
                         return (
                             <button

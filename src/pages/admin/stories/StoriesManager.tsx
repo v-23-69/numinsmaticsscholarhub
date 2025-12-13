@@ -1,13 +1,15 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Eye, Calendar, Upload } from "lucide-react";
+import { Plus, Trash2, Eye, Calendar, Upload, Camera, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import { uploadImage } from "@/utils/uploadUtils";
 
 const StoriesManager = () => {
     const [stories, setStories] = useState<any[]>([]);
@@ -20,8 +22,13 @@ const StoriesManager = () => {
         caption: "",
         cta_link: "",
         cta_text: "Learn More",
-        media_type: "image"
+        media_type: "image" as "image" | "video"
     });
+    const [previewFile, setPreviewFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string>("");
+    const [showSourceSelector, setShowSourceSelector] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const fetchStories = async () => {
         setLoading(true);
@@ -43,27 +50,77 @@ const StoriesManager = () => {
         fetchStories();
     }, []);
 
+    const handleFileSelect = async (file: File) => {
+        const type = file.type.startsWith('video') ? 'video' : 'image';
+        setPreviewFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+        setNewItem(prev => ({ ...prev, media_type: type }));
+        setShowSourceSelector(false);
+    };
+
+    const handleSourceSelect = (source: "camera" | "gallery") => {
+        if (source === "camera" && cameraInputRef.current) {
+            cameraInputRef.current.setAttribute("capture", "environment");
+            cameraInputRef.current.click();
+        } else if (source === "gallery" && fileInputRef.current) {
+            fileInputRef.current.removeAttribute("capture");
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            handleFileSelect(file);
+        }
+        // Reset input
+        if (e.target) e.target.value = '';
+    };
+
     const handleCreateStory = async () => {
-        if (!newItem.media_url) {
-            toast.error("Please provide a media URL");
+        if (!previewFile && !newItem.media_url) {
+            toast.error("Please upload a media file");
             return;
         }
 
         setUploading(true);
-        const { error } = await supabase.from('admin_stories').insert([{
-            ...newItem,
-            media_type: newItem.media_type as "image" | "video",
-            is_active: true
-        }]);
+        try {
+            let mediaUrl = newItem.media_url;
 
-        if (error) {
-            toast.error("Failed to create story: " + error.message);
-        } else {
-            toast.success("Story created successfully!");
-            setNewItem({ media_url: "", caption: "", cta_link: "", cta_text: "Learn More", media_type: "image" });
-            fetchStories();
+            // Upload file if selected
+            if (previewFile) {
+                mediaUrl = await uploadImage(previewFile, 'stories');
+                if (!mediaUrl) {
+                    toast.error("Failed to upload media");
+                    setUploading(false);
+                    return;
+                }
+            }
+
+            const { error } = await supabase.from('admin_stories').insert([{
+                media_url: mediaUrl,
+                media_type: newItem.media_type,
+                caption: newItem.caption,
+                cta_link: newItem.cta_link,
+                cta_text: newItem.cta_text,
+                is_active: true
+            }]);
+
+            if (error) {
+                toast.error("Failed to create story: " + error.message);
+            } else {
+                toast.success("Story created successfully!");
+                setNewItem({ media_url: "", caption: "", cta_link: "", cta_text: "Learn More", media_type: "image" });
+                setPreviewFile(null);
+                setPreviewUrl("");
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                fetchStories();
+            }
+        } catch (error: any) {
+            toast.error("Error: " + error.message);
+        } finally {
+            setUploading(false);
         }
-        setUploading(false);
     };
 
     const handleDelete = async (id: string) => {
@@ -94,72 +151,135 @@ const StoriesManager = () => {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Hidden File Inputs */}
+                        <input
+                            type="file"
+                            accept="image/*,video/*"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={handleFileChange}
+                        />
+                        <input
+                            type="file"
+                            accept="image/*,video/*"
+                            className="hidden"
+                            ref={cameraInputRef}
+                            onChange={handleFileChange}
+                        />
+
                         <div className="space-y-2">
                             <Label className="text-gray-300">Media (Image/Video)</Label>
 
                             <div className="flex gap-4 items-start">
                                 {/* Preview */}
-                                <div className="w-24 h-24 bg-black/40 rounded border border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                    {newItem.media_url ? (
-                                        newItem.media_type === 'video' ? (
-                                            <video src={newItem.media_url} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <img src={newItem.media_url} alt="" className="w-full h-full object-cover" />
-                                        )
-                                    ) : (
-                                        <div className="text-gray-600 text-xs text-center px-1">No Media</div>
-                                    )}
-                                </div>
-
-                                {/* Inputs */}
-                                <div className="flex-1 space-y-3">
-                                    <div>
-                                        <Label className="text-xs text-gray-500 mb-1 block">Upload File</Label>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                type="file"
-                                                accept="image/*,video/*"
-                                                disabled={uploading}
-                                                className="bg-black/20 border-admin-border text-white file:text-admin-gold file:bg-transparent file:border-0 file:cursor-pointer"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files?.[0];
-                                                    if (!file) return;
-
-                                                    setUploading(true);
-                                                    const type = file.type.startsWith('video') ? 'video' : 'image';
-                                                    setNewItem(prev => ({ ...prev, media_type: type }));
-
-                                                    try {
-                                                        const { uploadImage } = await import('@/utils/uploadUtils');
-                                                        const url = await uploadImage(file, 'stories');
-                                                        if (url) setNewItem(prev => ({ ...prev, media_url: url }));
-                                                        else toast.error("Upload failed");
-                                                    } catch (err) {
-                                                        console.error(err);
-                                                        toast.error("Upload error");
-                                                    } finally {
-                                                        setUploading(false);
-                                                    }
+                                <motion.div
+                                    initial={{ scale: 0.9, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    className="relative w-32 h-32 bg-black/40 rounded-lg border-2 border-gold/30 flex items-center justify-center overflow-hidden flex-shrink-0 group"
+                                >
+                                    {previewUrl ? (
+                                        <>
+                                            {newItem.media_type === 'video' ? (
+                                                <video src={previewUrl} className="w-full h-full object-cover" controls />
+                                            ) : (
+                                                <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                                            )}
+                                            <button
+                                                onClick={() => {
+                                                    setPreviewFile(null);
+                                                    setPreviewUrl("");
+                                                    if (previewUrl) URL.revokeObjectURL(previewUrl);
                                                 }}
-                                            />
+                                                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-500/90 hover:bg-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X className="w-4 h-4 text-white" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <div className="text-gray-600 text-xs text-center px-2">No Media</div>
+                                    )}
+                                </motion.div>
+
+                                {/* Upload Buttons */}
+                                <div className="flex-1 space-y-3">
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => setShowSourceSelector(true)}
+                                            disabled={uploading}
+                                            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-gold/40 hover:border-gold bg-gold/5 hover:bg-gold/10 transition-all disabled:opacity-50"
+                                        >
+                                            <Camera className="w-6 h-6 text-gold" />
+                                            <span className="text-xs font-medium text-gold">Camera</span>
+                                        </motion.button>
+                                        <motion.button
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() => handleSourceSelect("gallery")}
+                                            disabled={uploading}
+                                            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed border-gold/40 hover:border-gold bg-gold/5 hover:bg-gold/10 transition-all disabled:opacity-50"
+                                        >
+                                            <ImageIcon className="w-6 h-6 text-gold" />
+                                            <span className="text-xs font-medium text-gold">Gallery</span>
+                                        </motion.button>
+                                    </div>
+                                    {previewFile && (
+                                        <div className="text-xs text-gray-400">
+                                            Selected: {previewFile.name}
                                         </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-px bg-white/10 flex-1" />
-                                        <span className="text-[10px] text-gray-500 uppercase">Or URL</span>
-                                        <div className="h-px bg-white/10 flex-1" />
-                                    </div>
-
-                                    <Input
-                                        placeholder="https://example.com/image.jpg"
-                                        className="bg-black/20 border-admin-border text-white text-xs h-8"
-                                        value={newItem.media_url}
-                                        onChange={(e) => setNewItem({ ...newItem, media_url: e.target.value })}
-                                    />
+                                    )}
                                 </div>
                             </div>
                         </div>
+
+                        {/* Source Selector Modal */}
+                        <AnimatePresence>
+                            {showSourceSelector && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+                                    onClick={() => setShowSourceSelector(false)}
+                                >
+                                    <motion.div
+                                        initial={{ scale: 0.9, y: 20 }}
+                                        animate={{ scale: 1, y: 0 }}
+                                        exit={{ scale: 0.9, y: 20 }}
+                                        className="bg-admin-surface border-2 border-gold/30 rounded-2xl p-6 max-w-sm w-full"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <h3 className="text-lg font-serif font-semibold text-admin-gold mb-4 text-center">
+                                            Select Source
+                                        </h3>
+                                        <div className="space-y-3">
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => handleSourceSelect("camera")}
+                                                className="w-full flex items-center gap-4 p-4 rounded-xl border border-gold/30 hover:bg-gold/10 transition-all"
+                                            >
+                                                <Camera className="w-6 h-6 text-gold" />
+                                                <span className="font-medium">Take Photo/Video</span>
+                                            </motion.button>
+                                            <motion.button
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={() => handleSourceSelect("gallery")}
+                                                className="w-full flex items-center gap-4 p-4 rounded-xl border border-gold/30 hover:bg-gold/10 transition-all"
+                                            >
+                                                <ImageIcon className="w-6 h-6 text-gold" />
+                                                <span className="font-medium">Choose from Gallery</span>
+                                            </motion.button>
+                                            <Button
+                                                variant="ghost"
+                                                onClick={() => setShowSourceSelector(false)}
+                                                className="w-full mt-2"
+                                            >
+                                                Cancel
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <div className="space-y-2">
                             <Label className="text-gray-300">Caption</Label>
@@ -181,13 +301,15 @@ const StoriesManager = () => {
                             />
                         </div>
 
-                        <Button
-                            className="w-full bg-admin-gold text-black hover:bg-admin-gold2 font-medium"
-                            onClick={handleCreateStory}
-                            disabled={uploading}
-                        >
-                            {uploading ? "Publishing..." : "Publish Story"}
-                        </Button>
+                        <motion.div whileTap={{ scale: 0.98 }}>
+                            <Button
+                                className="w-full bg-admin-gold text-black hover:bg-admin-gold2 font-medium"
+                                onClick={handleCreateStory}
+                                disabled={uploading || (!previewFile && !newItem.media_url)}
+                            >
+                                {uploading ? "Publishing..." : "Publish Story"}
+                            </Button>
+                        </motion.div>
                     </CardContent>
                 </Card>
 

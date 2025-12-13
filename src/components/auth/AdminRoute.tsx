@@ -10,14 +10,16 @@ interface AdminRouteProps {
     children: React.ReactNode;
 }
 
+type UserRole = 'admin' | 'expert' | 'user' | null;
+
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     const { user, loading: authLoading } = useAuth();
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [userRole, setUserRole] = useState<UserRole>(null);
     const [roleCheckLoading, setRoleCheckLoading] = useState(true);
     const location = useLocation();
 
     useEffect(() => {
-        const checkAdminRole = async () => {
+        const checkUserRole = async () => {
             if (!user) {
                 setRoleCheckLoading(false);
                 return;
@@ -32,20 +34,22 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
                 if (error) throw error;
 
-                if (data?.role === 'admin') {
-                    setIsAdmin(true);
-                } else {
-                    toast.error("Access Denied: Admins only.");
+                const role = data?.role as UserRole;
+                setUserRole(role);
+
+                if (role !== 'admin' && role !== 'expert') {
+                    toast.error("Access Denied: Admin or Expert access required.");
                 }
             } catch (error) {
-                console.error('Error checking admin role:', error);
+                console.error('Error checking user role:', error);
+                toast.error("Failed to verify access permissions.");
             } finally {
                 setRoleCheckLoading(false);
             }
         };
 
         if (!authLoading) {
-            checkAdminRole();
+            checkUserRole();
         }
     }, [user, authLoading]);
 
@@ -54,25 +58,23 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="text-center">
                     <Loader2 className="h-10 w-10 animate-spin text-admin-gold mx-auto mb-4" />
-                    <p className="text-admin-gold/80 font-serif animate-pulse">Verifying Royal Credentials...</p>
+                    <p className="text-admin-gold/80 font-serif animate-pulse">Verifying Credentials...</p>
                 </div>
             </div>
         );
     }
 
     if (!user) {
-        // Redirect to auth page, but remember we tried to go to admin
         return <Navigate to="/auth" state={{ from: location }} replace />;
     }
 
-    if (!isAdmin) {
-        // User is logged in but not admin
+    if (userRole !== 'admin' && userRole !== 'expert') {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center p-4">
                 <div className="text-center max-w-md bg-admin-surface border border-admin-gold/30 p-8 rounded-xl shadow-2xl">
                     <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-serif text-admin-gold mb-2">Access Denied</h2>
-                    <p className="text-gray-400 mb-6">You do not have the required permissions to access the Royal Archive (Admin Dashboard).</p>
+                    <p className="text-gray-400 mb-6">You do not have the required permissions to access the Admin/Expert Dashboard.</p>
                     <div className="flex gap-4 justify-center">
                         <button
                             onClick={() => window.location.href = '/'}

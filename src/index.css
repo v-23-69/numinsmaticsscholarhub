@@ -100,76 +100,76 @@
 
   .dark {
     /* ─────────────────────────────────────────────────────────────────────────
-       DARK THEME: Premium Black + Gold (Royal Luxury)
+       DARK THEME: Premium Matte-Black + Gold (#D4AF37) (Royal Luxury)
        ───────────────────────────────────────────────────────────────────────── */
     
-    /* Base Colors */
-    --background: 220 10% 4%;
-    --foreground: 45 30% 92%;
+    /* Base Colors - Matte Black */
+    --background: 0 0% 4%;
+    --foreground: 45 20% 95%;
     
-    /* Surface Colors */
-    --card: 220 8% 8%;
-    --card-foreground: 45 30% 92%;
-    --popover: 220 8% 10%;
-    --popover-foreground: 45 30% 92%;
+    /* Surface Colors - Deep Charcoal */
+    --card: 0 0% 8%;
+    --card-foreground: 45 20% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 45 20% 95%;
     
-    /* Primary - Premium Gold */
-    --primary: 43 65% 52%;
-    --primary-foreground: 220 10% 4%;
+    /* Primary - Premium Gold #D4AF37 */
+    --primary: 43 74% 52%;
+    --primary-foreground: 0 0% 4%;
     
     /* Secondary - Dark Stone */
-    --secondary: 220 6% 14%;
-    --secondary-foreground: 45 25% 85%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 45 15% 88%;
     
     /* Muted - Subtle Charcoal */
-    --muted: 220 6% 16%;
-    --muted-foreground: 45 15% 60%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 45 10% 65%;
     
     /* Accent - Bright Gold */
-    --accent: 45 70% 58%;
-    --accent-foreground: 220 10% 4%;
+    --accent: 43 80% 58%;
+    --accent-foreground: 0 0% 4%;
     
     /* Destructive */
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
     
     /* Border & Input */
-    --border: 220 6% 18%;
-    --input: 220 6% 15%;
-    --ring: 43 65% 52%;
+    --border: 0 0% 16%;
+    --input: 0 0% 12%;
+    --ring: 43 74% 52%;
     
     /* Chart Colors */
-    --chart-1: 43 65% 52%;
-    --chart-2: 45 70% 58%;
-    --chart-3: 220 6% 35%;
-    --chart-4: 220 6% 45%;
-    --chart-5: 220 6% 55%;
+    --chart-1: 43 74% 52%;
+    --chart-2: 45 80% 58%;
+    --chart-3: 0 0% 30%;
+    --chart-4: 0 0% 40%;
+    --chart-5: 0 0% 50%;
     
-    /* Gold Spectrum - Dark Theme */
-    --gold: 43 65% 52%;
-    --gold-light: 45 70% 58%;
-    --gold-dark: 42 60% 42%;
-    --gold-muted: 43 40% 40%;
+    /* Gold Spectrum - Premium #D4AF37 */
+    --gold: 43 74% 52%;
+    --gold-light: 45 80% 58%;
+    --gold-dark: 42 70% 45%;
+    --gold-muted: 43 50% 45%;
     
     /* Stone Spectrum - Dark Theme */
-    --stone: 220 6% 25%;
-    --stone-light: 220 6% 35%;
-    --stone-dark: 220 6% 15%;
+    --stone: 0 0% 20%;
+    --stone-light: 0 0% 28%;
+    --stone-dark: 0 0% 12%;
     
     /* Ivory & Cream - Dark Theme */
-    --ivory: 45 30% 92%;
-    --cream: 45 25% 85%;
-    --parchment: 220 6% 18%;
+    --ivory: 45 20% 95%;
+    --cream: 45 15% 88%;
+    --parchment: 0 0% 16%;
     
     /* Sidebar - Dark Theme */
-    --sidebar-background: 220 8% 8%;
-    --sidebar-foreground: 45 30% 92%;
-    --sidebar-primary: 43 65% 52%;
-    --sidebar-primary-foreground: 220 10% 4%;
-    --sidebar-accent: 45 70% 58%;
-    --sidebar-accent-foreground: 220 10% 4%;
-    --sidebar-border: 220 6% 18%;
-    --sidebar-ring: 43 65% 52%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 45 20% 95%;
+    --sidebar-primary: 43 74% 52%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 45 80% 58%;
+    --sidebar-accent-foreground: 0 0% 4%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 43 74% 52%;
   }
 }
 
@@ -295,10 +295,22 @@
   }
 
   .card-gold-trim {
-    @apply relative rounded-xl overflow-hidden;
+    @apply relative rounded-xl overflow-hidden transition-all duration-300;
     background: hsl(var(--card));
     border: 1px solid hsl(var(--gold) / 0.3);
-    box-shadow: 0 4px 12px -2px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--gold) / 0.1);
+    box-shadow: 
+      0 4px 12px -2px hsl(var(--foreground) / 0.08), 
+      0 0 0 1px hsl(var(--gold) / 0.1),
+      0 2px 8px -2px hsl(var(--gold) / 0.1);
+  }
+
+  .card-gold-trim:hover {
+    transform: translateY(-4px) scale(1.02);
+    border-color: hsl(var(--gold) / 0.5);
+    box-shadow: 
+      0 8px 24px -4px hsl(var(--foreground) / 0.12), 
+      0 0 0 1px hsl(var(--gold) / 0.2),
+      0 4px 16px -4px hsl(var(--gold) / 0.2);
   }
 
   .card-embossed {
@@ -312,6 +324,10 @@
      Story Rings (Antique Museum Style)
      ───────────────────────────────────────────────────────────────────────── */
   
+  /* ─────────────────────────────────────────────────────────────────────────
+     Premium Story Bubbles (Hexagon & Rounded Rectangle with Gold Frame)
+     ───────────────────────────────────────────────────────────────────────── */
+  
   .story-ring {
     @apply relative rounded-full;
     padding: 3px;
@@ -323,8 +339,16 @@
       hsl(var(--gold)) 100%
     );
     box-shadow: 
-      0 0 15px hsl(var(--gold) / 0.3),
-      inset 0 0 10px hsl(var(--gold-dark) / 0.3);
+      0 0 20px hsl(var(--gold) / 0.4),
+      inset 0 0 12px hsl(var(--gold-dark) / 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .story-ring:hover {
+    transform: scale(1.05);
+    box-shadow: 
+      0 0 30px hsl(var(--gold) / 0.6),
+      inset 0 0 15px hsl(var(--gold-dark) / 0.4);
   }
 
   .story-ring-inactive {
@@ -335,6 +359,52 @@
       hsl(var(--stone-light)) 50%,
       hsl(var(--stone)) 100%
     );
+    transition: all 0.3s ease;
+  }
+
+  .story-hexagon {
+    @apply relative;
+    width: 68px;
+    height: 68px;
+    clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+    padding: 3px;
+    background: linear-gradient(135deg, 
+      hsl(var(--gold)) 0%, 
+      hsl(var(--gold-light)) 50%,
+      hsl(var(--gold)) 100%
+    );
+    box-shadow: 
+      0 0 20px hsl(var(--gold) / 0.4),
+      inset 0 0 10px hsl(var(--gold-dark) / 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .story-hexagon:hover {
+    transform: scale(1.08) rotate(5deg);
+    box-shadow: 
+      0 0 35px hsl(var(--gold) / 0.6),
+      inset 0 0 15px hsl(var(--gold-dark) / 0.4);
+  }
+
+  .story-rectangle {
+    @apply relative rounded-2xl;
+    padding: 3px;
+    background: linear-gradient(135deg, 
+      hsl(var(--gold)) 0%, 
+      hsl(var(--gold-light)) 50%,
+      hsl(var(--gold)) 100%
+    );
+    box-shadow: 
+      0 0 20px hsl(var(--gold) / 0.4),
+      inset 0 0 10px hsl(var(--gold-dark) / 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .story-rectangle:hover {
+    transform: scale(1.05);
+    box-shadow: 
+      0 0 35px hsl(var(--gold) / 0.6),
+      inset 0 0 15px hsl(var(--gold-dark) / 0.4);
   }
 
 
@@ -453,15 +523,27 @@
      ───────────────────────────────────────────────────────────────────────── */
   
   .message-tile-user {
-    @apply rounded-xl px-4 py-3;
+    @apply rounded-xl px-4 py-3 transition-all duration-200;
     background: hsl(var(--card));
-    border: 1px solid hsl(var(--gold) / 0.25);
+    border: 1px solid hsl(var(--gold) / 0.3);
+    box-shadow: 0 2px 8px -2px hsl(var(--gold) / 0.15);
+  }
+
+  .message-tile-user:hover {
+    border-color: hsl(var(--gold) / 0.5);
+    box-shadow: 0 4px 12px -2px hsl(var(--gold) / 0.25);
   }
 
   .message-tile-expert {
-    @apply rounded-xl px-4 py-3;
-    background: hsl(var(--muted) / 0.5);
+    @apply rounded-xl px-4 py-3 transition-all duration-200;
+    background: hsl(var(--muted) / 0.6);
     border: 1px solid hsl(var(--border));
+    box-shadow: 0 2px 8px -2px hsl(var(--foreground) / 0.05);
+  }
+
+  .message-tile-expert:hover {
+    background: hsl(var(--muted) / 0.7);
+    box-shadow: 0 4px 12px -2px hsl(var(--foreground) / 0.08);
   }
 
   /* ─────────────────────────────────────────────────────────────────────────
@@ -616,6 +698,24 @@
   }
 }
 
+@keyframes gold-pulse {
+  0%, 100% {
+    box-shadow: 0 0 15px hsl(var(--gold) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px hsl(var(--gold) / 0.6);
+  }
+}
+
+@keyframes shimmer-gold {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 /* Animation Classes */
 .animate-shimmer {
   animation: shimmer 2s infinite;
@@ -643,6 +743,21 @@
 
 .animate-slide-up {
   animation: slide-up 0.3s ease-out forwards;
+}
+
+.animate-gold-pulse {
+  animation: gold-pulse 2s ease-in-out infinite;
+}
+
+.animate-shimmer-gold {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--gold) / 0.2),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer-gold 2s infinite;
 }
 
 /* Transition Utilities */

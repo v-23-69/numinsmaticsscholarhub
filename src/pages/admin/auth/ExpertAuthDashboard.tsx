@@ -5,57 +5,84 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Shield, CheckCircle, Clock, User, DollarSign, XCircle, Search } from "lucide-react";
+import { Shield, CheckCircle, Clock, User, DollarSign, XCircle, Search, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/contexts/AuthContext";
+import { ExpertChatPanel } from "@/components/admin/ExpertChatPanel";
 
 const ExpertAuthDashboard = () => {
+    const { user } = useAuth();
     const [requests, setRequests] = useState<any[]>([]);
     const [experts, setExperts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
     const [assignExpertId, setAssignExpertId] = useState("");
+    const [userRole, setUserRole] = useState<'admin' | 'expert' | null>(null);
+    const [chatRequest, setChatRequest] = useState<any>(null);
+    const [threadId, setThreadId] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchUserRole();
+    }, [user]);
+
+    useEffect(() => {
+        if (userRole) {
+            fetchRequests();
+            if (userRole === 'admin') {
+                fetchExperts();
+            }
+        }
+    }, [userRole]);
+
+    const fetchUserRole = async () => {
+        if (!user) return;
+        const { data } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+        if (data) setUserRole(data.role as 'admin' | 'expert');
+    };
 
     const fetchRequests = async () => {
         setLoading(true);
-        // Fetch auth requests with user details
-        const { data, error } = await supabase
+        let query = supabase
             .from('auth_requests')
             .select(`
                 *,
-                user:profiles(display_name, avatar_url, username)
-            `)
-            .order('created_at', { ascending: false });
+                user:profiles!auth_requests_user_id_fkey(display_name, avatar_url, username)
+            `);
+
+        // Experts only see their assigned requests
+        if (userRole === 'expert') {
+            query = query.eq('assigned_expert_id', user?.id);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching requests:', error);
             toast.error("Failed to load requests");
         } else {
-            console.log("Fetched requests:", data);
             setRequests(data || []);
         }
         setLoading(false);
     };
 
     const fetchExperts = async () => {
-        // In a real app, filtering by role 'expert'
-        // For now, fetching all profiles and assuming some are experts or admin selects manually
         const { data, error } = await supabase
             .from('profiles')
-            .select('*'); // Should filter by role if available
+            .select('*')
+            .eq('role', 'expert');
 
         if (!error && data) {
             setExperts(data);
         }
     };
-
-    useEffect(() => {
-        fetchRequests();
-        fetchExperts();
-    }, []);
 
     const handleAssignExpert = async () => {
         if (!selectedRequest || !assignExpertId) {
@@ -80,6 +107,24 @@ const ExpertAuthDashboard = () => {
         }
     };
 
+    const handleOpenChat = async (request: any) => {
+        // Get thread for this request
+        const { data: thread } = await supabase
+            .from('threads')
+            .select('id')
+            .eq('auth_request_id', request.id)
+            .single();
+
+        setThreadId(thread?.id || null);
+        setChatRequest(request);
+    };
+
+    const handleCloseChat = () => {
+        setChatRequest(null);
+        setThreadId(null);
+        fetchRequests(); // Refresh to update status
+    };
+
     const StatusBadge = ({ status }: { status: string }) => {
         switch (status) {
             case 'pending': return <Badge variant="outline" className="border-yellow-500 text-yellow-500 bg-yellow-500/10">Pending</Badge>;
@@ -90,9 +135,14 @@ const ExpertAuthDashboard = () => {
         }
     };
 
-    const filteredRequests = (status: string) => requests.filter(r =>
-        status === 'all' ? true : r.status === status
-    );
+    const filteredRequests = (status: string) => {
+        let filtered = requests.filter(r => status === 'all' ? true : r.status === status);
+        // For experts, show only in_review in "In Progress" tab
+        if (userRole === 'expert' && status === 'in_review') {
+            filtered = filtered.filter(r => r.assigned_expert_id === user?.id);
+        }
+        return filtered;
+    };
 
     return (
         <div className="space-y-6">
@@ -180,6 +230,15 @@ const ExpertAuthDashboard = () => {
                                             </div>
 
                                             <div className="flex items-center gap-4 mt-4">
+                                                {req.status === 'in_review' && (userRole === 'admin' || req.assigned_expert_id === user?.id) && (
+                                                    <Button
+                                                        onClick={() => handleOpenChat(req)}
+                                                        className="bg-admin-gold text-black hover:bg-admin-gold2"
+                                                    >
+                                                        <MessageCircle className="w-4 h-4 mr-2" />
+                                                        Open Chat
+                                                    </Button>
+                                                )}
                                                 <Dialog>
                                                     <DialogTrigger asChild>
                                                         <Button variant="outline" className="border-admin-gold/30 text-admin-gold hover:bg-admin-gold hover:text-black">
@@ -254,6 +313,20 @@ const ExpertAuthDashboard = () => {
                     </TabsContent>
                 ))}
             </Tabs>
+
+            {/* Chat Panel */}
+            {chatRequest && (
+                <ExpertChatPanel
+                    requestId={chatRequest.id}
+                    threadId={threadId}
+                    userId={chatRequest.user_id}
+                    userName={chatRequest.user?.display_name || chatRequest.user?.username || "User"}
+                    userAvatar={chatRequest.user?.avatar_url}
+                    images={Array.isArray(chatRequest.images) ? chatRequest.images : []}
+                    onClose={handleCloseChat}
+                    onSessionEnd={handleCloseChat}
+                />
+            )}
         </div>
     );
 };
