@@ -23,9 +23,9 @@ interface CoinCardProps {
 }
 
 const rarityColors = {
-  common: "bg-muted text-muted-foreground",
-  rare: "bg-gold/20 text-gold border-gold/30",
-  "very-rare": "bg-gradient-to-r from-gold/30 to-gold-light/30 text-gold border-gold/40",
+  common: "bg-card border-gold/20 text-muted-foreground",
+  rare: "bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 text-gold border-gold/30",
+  "very-rare": "bg-gradient-to-r from-gold/30 via-gold-light/30 to-gold/30 text-gold border-gold/40 shadow-[0_0_15px_hsl(var(--gold)/0.3)]",
 };
 
 export function MarketplaceCoinCard({
@@ -54,25 +54,29 @@ export function MarketplaceCoinCard({
 
   return (
     <motion.article
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -6, scale: 1.02 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
-      className="card-gold-trim overflow-hidden"
+      className="card-premium overflow-hidden group"
     >
-      {/* Image slider */}
-      <div className="relative aspect-square overflow-hidden bg-muted/50">
+      {/* Premium Image slider */}
+      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-muted via-[hsl(var(--blue-light))] to-muted">
         <motion.img
           key={currentImageIndex}
-          initial={{ opacity: 0, scale: 1.05 }}
+          initial={{ opacity: 0, scale: 1.1 }}
           animate={{ opacity: 1, scale: 1 }}
-          src={images[currentImageIndex]}
+          transition={{ duration: 0.3 }}
+          src={images[currentImageIndex] || images[0]}
           alt={title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
         {/* Image navigation dots */}
         {images.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
             {images.map((_, idx) => (
               <button
                 key={idx}
@@ -81,8 +85,10 @@ export function MarketplaceCoinCard({
                   setCurrentImageIndex(idx);
                 }}
                 className={cn(
-                  "w-1.5 h-1.5 rounded-full transition-colors",
-                  idx === currentImageIndex ? "bg-gold" : "bg-foreground/30"
+                  "w-1.5 h-1.5 rounded-full transition-all",
+                  idx === currentImageIndex 
+                    ? "bg-gold w-6 shadow-[0_0_8px_rgba(212,175,55,0.6)]" 
+                    : "bg-white/40 hover:bg-white/60"
                 )}
               />
             ))}
@@ -97,80 +103,87 @@ export function MarketplaceCoinCard({
                 e.preventDefault();
                 handleSwipe("right");
               }}
-              className="absolute left-0 top-0 bottom-0 w-1/3"
+              className="absolute left-0 top-0 bottom-0 w-1/3 z-10"
             />
             <button
               onClick={(e) => {
                 e.preventDefault();
                 handleSwipe("left");
               }}
-              className="absolute right-0 top-0 bottom-0 w-1/3"
+              className="absolute right-0 top-0 bottom-0 w-1/3 z-10"
             />
           </>
         )}
 
-        {/* Rarity badge */}
+        {/* Premium Rarity badge */}
         {rarity !== "common" && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
             className={cn(
-              "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
+              "absolute top-3 left-3 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border backdrop-blur-sm",
               rarityColors[rarity]
             )}
           >
             {rarity === "very-rare" ? "Very Rare" : "Rare"}
-          </div>
+          </motion.div>
         )}
 
-        {/* Wishlist button */}
-        <button
+        {/* Premium Wishlist button */}
+        <motion.button
+          whileTap={{ scale: 0.9 }}
           onClick={(e) => {
             e.preventDefault();
             onWishlistToggle?.();
           }}
           className={cn(
-            "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all",
+            "absolute top-3 right-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all backdrop-blur-sm z-10 shadow-lg",
             isWishlisted 
-              ? "bg-gold text-primary-foreground" 
-              : "bg-background/80 backdrop-blur-sm"
+              ? "bg-gradient-to-br from-gold to-gold-light text-primary-foreground shadow-[0_4px_16px_hsl(var(--gold)/0.5)]" 
+              : "bg-card/80 border border-gold/30 text-foreground hover:border-gold/50"
           )}
         >
-          <Heart className={cn("w-4 h-4", isWishlisted && "fill-current")} />
-        </button>
+          <Heart className={cn("w-5 h-5 transition-all", isWishlisted && "fill-current")} />
+        </motion.button>
       </div>
 
-      {/* Content */}
-      <Link to={`/marketplace/coin/${id}`} className="block p-3">
-        <h3 className="font-serif font-semibold text-sm line-clamp-1">{title}</h3>
+      {/* Premium Content */}
+      <Link to={`/marketplace/coin/${id}`} className="block p-4">
+        <h3 className="font-serif font-bold text-base line-clamp-1 mb-1 text-foreground group-hover:text-gold transition-colors">
+          {title}
+        </h3>
         
         {era && (
-          <p className="text-xs text-muted-foreground mt-0.5">{era}</p>
+          <p className="text-xs text-muted-foreground mb-2">{era}</p>
         )}
 
-        <div className="flex items-center justify-between mt-2">
-          <span className="font-bold text-gold">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-bold text-lg bg-gradient-to-r from-gold via-gold-light to-gold bg-clip-text text-transparent">
             ₹{price.toLocaleString()}
           </span>
           
           {metal && (
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide px-2 py-1 rounded-lg bg-card border border-gold/20">
               {metal}
             </span>
           )}
         </div>
 
-        {/* Seller info */}
+        {/* Premium Seller info */}
         {seller && (
-          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/40">
+          <div className="flex items-center gap-2 pt-3 border-t border-gold/20">
             {seller.isVerified && (
-              <Shield className="w-3 h-3 text-primary" />
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gold to-gold-light flex items-center justify-center">
+                <Shield className="w-3 h-3 text-black" />
+              </div>
             )}
-            <span className="text-[10px] text-muted-foreground truncate">
+            <span className="text-[11px] text-muted-foreground truncate flex-1">
               {seller.name}
             </span>
             {seller.trustScore && (
-              <div className="flex items-center gap-0.5 ml-auto">
-                <Star className="w-3 h-3 text-gold fill-gold" />
-                <span className="text-[10px] text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Star className="w-3.5 h-3.5 text-gold fill-gold" />
+                <span className="text-[11px] font-semibold text-gold">
                   {seller.trustScore.toFixed(1)}
                 </span>
               </div>
@@ -179,17 +192,18 @@ export function MarketplaceCoinCard({
         )}
       </Link>
 
-      {/* Add to cart */}
-      <button
+      {/* Premium Add to cart */}
+      <motion.button
+        whileTap={{ scale: 0.98 }}
         onClick={(e) => {
           e.preventDefault();
           onAddToCart?.();
         }}
-        className="w-full py-2.5 border-t border-border/40 flex items-center justify-center gap-2 text-sm font-medium text-gold hover:bg-gold/10 transition-colors"
+        className="w-full py-3.5 border-t border-gold/20 bg-gradient-to-r from-muted via-[hsl(var(--blue))] to-muted flex items-center justify-center gap-2 text-sm font-semibold text-gold hover:from-gold/10 hover:via-gold/5 hover:to-gold/10 transition-all group"
       >
-        <ShoppingCart className="w-4 h-4" />
+        <ShoppingCart className="w-4 h-4 group-hover:scale-110 transition-transform" />
         Add to Cart
-      </button>
+      </motion.button>
     </motion.article>
   );
 }

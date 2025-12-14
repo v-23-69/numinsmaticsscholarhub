@@ -26,12 +26,12 @@ export function PremiumHeader({
         "sticky top-0 z-40 safe-area-inset-top transition-colors",
         transparent
           ? "bg-transparent"
-          : "bg-background/95 backdrop-blur-xl border-b border-border/40"
+          : "bg-gradient-to-b from-card/95 via-[hsl(var(--blue-light)/0.95)] to-card/95 backdrop-blur-xl border-b-2 border-gold/30"
       )}
     >
       {/* Bottom gold accent line */}
       {!transparent && (
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gold/40 to-transparent shadow-[0_0_8px_hsl(var(--gold)/0.3)]" />
       )}
 
       <div className="flex items-center justify-between h-14 px-4">

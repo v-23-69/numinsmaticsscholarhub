@@ -25,10 +25,10 @@ export function CategoryGrid4x4({ categories, activeCategory, onCategorySelect }
               onClick={() => onCategorySelect(category.slug)}
               className={cn(
                 "relative aspect-square rounded-xl flex flex-col items-center justify-center p-2 transition-all duration-300",
-                "border overflow-hidden",
+                "border-2 overflow-hidden",
                 isActive
-                  ? "border-gold bg-gold/10 shadow-gold"
-                  : "border-border/60 bg-card hover:border-gold/50"
+                  ? "border-gold bg-gradient-to-br from-gold/20 via-gold/15 to-gold/20 shadow-[0_4px_16px_hsl(var(--gold)/0.3)]"
+                  : "border-gold/30 bg-gradient-to-br from-card via-[hsl(var(--blue-light))] to-card hover:border-gold/50 hover:shadow-lg"
               )}
             >
               {/* Active glow effect */}

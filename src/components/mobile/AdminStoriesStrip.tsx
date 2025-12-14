@@ -187,7 +187,7 @@ export function AdminStoriesStrip() {
 
   return (
     <>
-      <section className="px-4 py-4 border-b border-border/40">
+      <section className="px-4 py-4 border-b-2 border-gold/20 bg-gradient-to-b from-transparent via-blue/5 to-transparent">
         <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-elegant">
           {/* NSH Official story indicator */}
           <div className="flex flex-col items-center gap-1 shrink-0">

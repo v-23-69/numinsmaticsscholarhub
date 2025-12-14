@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, SlidersHorizontal, X, ChevronDown, Grid, Loader2 } from "lucide-react";
+import { Search, SlidersHorizontal, X, ChevronDown, Grid, Loader2, Sparkles, TrendingUp } from "lucide-react";
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { MarketplaceCoinCard } from "@/components/mobile/MarketplaceCoinCard";
 import { CategoryGrid4x4 } from "@/components/mobile/CategoryGrid4x4";
@@ -40,6 +40,7 @@ export default function MobileMarketplace() {
   const [sortBy, setSortBy] = useState("newest");
   const [priceRange, setPriceRange] = useState([0, 500000]);
   const [selectedMetals, setSelectedMetals] = useState<string[]>([]);
+  const [selectedRarity, setSelectedRarity] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -59,7 +60,6 @@ export default function MobileMarketplace() {
         if (catData && catData.length > 0) {
           setCategories([{ id: 'all', slug: 'all', name: 'All Coins' }, ...catData]);
         } else {
-          // Fallback to mock categories if DB is empty
           setCategories([{ id: "all", slug: "all", title: "All Coins" }, ...mockCategories]);
         }
 
@@ -73,7 +73,6 @@ export default function MobileMarketplace() {
                 `)
           .eq('status', 'active');
 
-        // Apply Filters
         if (activeCategory !== 'all') {
           query = query.eq('category_id', activeCategory);
         }
@@ -89,7 +88,6 @@ export default function MobileMarketplace() {
         if (error) console.error("Error fetching listings:", error);
 
         if (listingData) {
-          // Client-side filtering for complex text/array searches that are harder in single SQL query
           let filtered = listingData;
 
           // Price Range
@@ -97,7 +95,7 @@ export default function MobileMarketplace() {
 
           // Metals
           if (selectedMetals.length > 0) {
-            filtered = filtered.filter(l => l.metal_type && selectedMetals.includes(l.metal_type));
+            filtered = filtered.filter(l => l.metal && selectedMetals.includes(l.metal));
           }
 
           // Search Text
@@ -120,7 +118,7 @@ export default function MobileMarketplace() {
     };
 
     fetchMarketplaceData();
-  }, [activeCategory, sortBy, showFilters, searchQuery]); // Re-run when these change
+  }, [activeCategory, sortBy, priceRange, selectedMetals, searchQuery]);
 
   const handleCategorySelect = (id: string) => {
     setActiveCategory(id);
@@ -140,7 +138,6 @@ export default function MobileMarketplace() {
   };
 
   const handleAddToCart = (listing: any) => {
-    // Adapter to match Shopify cart expected format
     const mainImage = listing.coin_images?.[0]?.url || "";
 
     addItem({
@@ -165,7 +162,7 @@ export default function MobileMarketplace() {
           options: [],
         },
       },
-      variantId: `gid://shopify/ProductVariant/${listing.id}`, // Fake ID for now
+      variantId: `gid://shopify/ProductVariant/${listing.id}`,
       variantTitle: "Default",
       price: { amount: listing.price.toString(), currencyCode: listing.currency || "INR" },
       quantity: 1,
@@ -179,62 +176,87 @@ export default function MobileMarketplace() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header with Coin Logo */}
-      <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-gold/20 safe-area-inset-top">
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
-        <div className="flex items-center justify-between h-14 px-4">
-          <div className="flex items-center gap-2">
-            {/* Coin Logo */}
-            <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-gold">
-              <img src={coinMughalFront} alt="NSH" className="w-full h-full object-cover" />
+    <div className="min-h-screen bg-gradient-to-b from-background via-[hsl(var(--blue-light))] to-background pb-20 relative overflow-hidden">
+      {/* Premium Background Pattern - Theme Aware */}
+      <div className="fixed inset-0 opacity-[0.02] dark:opacity-[0.015] pointer-events-none">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 2px 2px, hsl(var(--gold)) 1px, transparent 0)`,
+          backgroundSize: '40px 40px'
+        }} />
+      </div>
+      
+      {/* Subtle gradient overlay for depth */}
+      <div className="fixed inset-0 bg-gradient-to-b from-blue/10 via-transparent to-gold/5 pointer-events-none" />
+
+      {/* Premium Header */}
+      <header className="sticky top-0 z-40 bg-gradient-to-b from-card/95 via-[hsl(var(--blue-light)/0.95)] to-card/95 backdrop-blur-2xl border-b-2 border-gold/30 safe-area-inset-top shadow-2xl">
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-gold/50 to-transparent shadow-[0_0_8px_hsl(var(--gold)/0.3)]" />
+        <div className="flex items-center justify-between h-16 px-4">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="absolute inset-0 bg-gold/20 blur-xl rounded-full" />
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gold/40 shadow-lg relative z-10">
+                <img src={coinMughalFront} alt="NSH" className="w-full h-full object-cover" />
+              </div>
             </div>
-            <span className="font-serif font-bold gold-text">Market</span>
+            <div>
+              <span className="font-serif font-bold text-lg bg-gradient-to-r from-gold via-gold-light to-gold bg-clip-text text-transparent block">
+                Market
+              </span>
+              <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Premium Coins</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <motion.button
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowSearch(true)}
-              className="p-2 rounded-full hover:bg-muted/50"
+              className="p-2.5 rounded-xl hover:bg-blue/30 transition-colors"
             >
-              <Search className="w-5 h-5" />
-            </button>
+              <Search className="w-5 h-5 text-foreground" />
+            </motion.button>
             <CartDrawer />
           </div>
         </div>
       </header>
 
-      {/* Category Toggle & Stats */}
-      <section className="sticky top-14 z-30 bg-background/95 backdrop-blur-lg border-b border-border/40">
-        <div className="flex items-center justify-between px-4 py-3">
-          <button
+      {/* Premium Category Toggle & Stats */}
+      <section className="sticky top-16 z-30 bg-gradient-to-b from-card/95 via-[hsl(var(--blue-light)/0.95)] to-transparent backdrop-blur-xl border-b border-gold/20">
+        <div className="flex items-center justify-between px-4 py-4">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowCategories(!showCategories)}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-              showCategories ? "bg-gold text-background" : "bg-secondary text-secondary-foreground"
+              "flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all shadow-lg",
+              showCategories 
+                ? "bg-gradient-to-r from-gold via-gold-light to-gold text-black shadow-[0_8px_32px_rgba(212,175,55,0.4)]" 
+                : "bg-gradient-to-br from-blue/20 via-blue/15 to-blue/20 border border-gold/30 text-foreground hover:border-gold/50"
             )}
           >
             <Grid className="w-4 h-4" />
             Categories
-          </button>
-          <span className="text-sm text-muted-foreground">
-            <strong className="text-foreground">{listings.length}</strong> coins
-          </span>
+          </motion.button>
+          <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-br from-blue/25 via-blue/20 to-blue/25 border border-gold/20">
+            <TrendingUp className="w-4 h-4 text-gold" />
+            <span className="text-sm font-bold text-foreground">
+              <span className="text-gold">{listings.length}</span> coins
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* Category Grid */}
+      {/* Premium Category Grid */}
       <AnimatePresence>
         {showCategories && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden bg-card/50 border-b border-border/40"
+            className="overflow-hidden bg-muted/30 border-b border-gold/20"
           >
             <CategoryGrid4x4
               categories={categories.map(c => ({
                 id: c.id,
-                slug: c.id, // Using ID as slug for simplification in DB mode
+                slug: c.id,
                 title: c.name || c.title
               }))}
               activeCategory={activeCategory}
@@ -244,52 +266,68 @@ export default function MobileMarketplace() {
         )}
       </AnimatePresence>
 
-      {/* Toolbar */}
-      <section className="px-4 py-3 flex items-center justify-between border-b border-border/40">
-        <button
+      {/* Premium Toolbar */}
+      <section className="px-4 py-4 flex items-center justify-between border-b border-gold/20">
+        <motion.button
+          whileTap={{ scale: 0.95 }}
           onClick={() => setShowSort(true)}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-secondary text-sm"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-br from-card via-[hsl(var(--blue-light))] to-card border-2 border-gold/30 text-sm font-medium text-foreground hover:border-gold/50 hover:shadow-lg transition-all"
         >
           {sortOptions.find(s => s.id === sortBy)?.label}
           <ChevronDown className="w-4 h-4" />
-        </button>
-        <button
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.95 }}
           onClick={() => setShowFilters(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gold/10 text-gold text-sm font-medium border border-gold/30"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 border-2 border-gold/30 text-gold text-sm font-semibold hover:border-gold/50 hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all"
         >
           <SlidersHorizontal className="w-4 h-4" />
           Filters
-        </button>
+        </motion.button>
       </section>
 
-      {/* Coins Grid */}
-      <main className="px-4 py-4">
+      {/* Premium Coins Grid */}
+      <main className="px-4 py-5">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-gold" />
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-gold mb-4" />
+            <p className="text-muted-foreground">Loading premium coins...</p>
           </div>
         ) : listings.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <p>No coins found matching your criteria.</p>
-            <Button variant="link" onClick={() => { setActiveCategory('all'); setPriceRange([0, 500000]); setSearchQuery(""); }} className="mt-2 text-gold">
+          <div className="text-center py-20">
+            <div className="w-20 h-20 rounded-full bg-card border-2 border-gold/20 flex items-center justify-center mx-auto mb-4">
+              <Search className="w-10 h-10 text-gold/60" />
+            </div>
+            <p className="text-foreground font-medium mb-2">No coins found</p>
+            <p className="text-sm text-muted-foreground mb-6">Try adjusting your filters</p>
+            <Button 
+              variant="outline" 
+              onClick={() => { 
+                setActiveCategory('all'); 
+                setPriceRange([0, 500000]); 
+                setSearchQuery(""); 
+                setSelectedMetals([]);
+                setSelectedRarity([]);
+              }} 
+              className="rounded-2xl border-gold/40 text-gold hover:bg-gold/10 h-12 px-6"
+            >
               Reset Filters
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {listings.map((listing, index) => (
               <motion.div
                 key={listing.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
+                transition={{ delay: index * 0.03 }}
               >
                 <MarketplaceCoinCard
                   id={listing.id}
                   title={listing.title}
                   era={listing.year ? listing.year.toString() : ""}
                   price={listing.price}
-                  // Extract first image from relation
                   images={listing.coin_images?.map((img: any) => img.url) || []}
                   isWishlisted={wishlist.includes(listing.id)}
                   onWishlistToggle={() => toggleWishlist(listing.id)}
@@ -300,68 +338,95 @@ export default function MobileMarketplace() {
           </div>
         )}
 
-        {/* Load More */}
-        <div className="mt-6 text-center">
-          <Button variant="outline" className="rounded-xl border-gold/40 text-gold hover:bg-gold/10">
-            Load More
-            <ChevronDown className="w-4 h-4 ml-2" />
-          </Button>
-        </div>
+        {/* Premium Load More */}
+        {listings.length > 0 && (
+          <div className="mt-8 text-center">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl border-2 border-gold/40 bg-gradient-to-r from-blue/15 via-blue/10 to-blue/15 backdrop-blur-sm text-gold text-sm font-semibold hover:border-gold/60 hover:shadow-[0_0_20px_hsl(var(--gold)/0.3)] transition-all"
+            >
+              Load More
+              <ChevronDown className="w-4 h-4" />
+            </motion.button>
+          </div>
+        )}
       </main>
 
-      {/* Search Modal */}
+      {/* Premium Search Modal */}
       <AnimatePresence>
         {showSearch && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-background"
+            className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md"
           >
             <div className="safe-area-inset-top">
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
+              <div className="flex items-center gap-3 px-4 py-4 border-b border-gold/20 bg-gradient-to-b from-card via-[hsl(var(--blue-light))] to-card">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold" />
                   <input
                     type="text"
                     placeholder="Search coins, sellers, eras..."
-                    className="w-full pl-10 pr-4 py-3 bg-secondary rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                    className="w-full pl-12 pr-4 py-3.5 bg-gradient-to-br from-blue/20 via-blue/15 to-blue/20 border-2 border-gold/20 rounded-2xl text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 focus:border-gold/40 transition-all"
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <button onClick={() => setShowSearch(false)}>
-                  <X className="w-6 h-6" />
-                </button>
+                <motion.button 
+                  onClick={() => setShowSearch(false)}
+                  whileTap={{ scale: 0.95 }}
+                  className="p-2.5 rounded-xl hover:bg-blue/30 transition-colors"
+                >
+                  <X className="w-6 h-6 text-foreground" />
+                </motion.button>
               </div>
 
-              <div className="px-4 py-4">
-                <h3 className="text-sm font-semibold mb-3">Recent Searches</h3>
-                <div className="flex flex-wrap gap-2">
-                  {["Mughal Gold", "Victoria Rupee", "Ancient Coins", "Shah Jahan"].map(term => (
-                    <button key={term} className="px-3 py-1.5 rounded-full bg-secondary text-sm">
-                      {term}
-                    </button>
-                  ))}
+              <div className="px-4 py-6 space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-gold" />
+                    Recent Searches
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {["Mughal Gold", "Victoria Rupee", "Ancient Coins", "Shah Jahan"].map(term => (
+                      <motion.button
+                        key={term}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setSearchQuery(term);
+                          setShowSearch(false);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-card border border-gold/20 text-sm text-foreground hover:border-gold/40 transition-all"
+                      >
+                        {term}
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div className="px-4 py-4 border-t border-border/40">
-                <h3 className="text-sm font-semibold mb-3">Popular Categories</h3>
-                <div className="flex flex-wrap gap-2">
-                  {categories.slice(0, 8).map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => {
-                        setActiveCategory(cat.slug);
-                        setShowSearch(false);
-                      }}
-                      className="px-3 py-1.5 rounded-full bg-gold/10 text-gold text-sm border border-gold/20"
-                    >
-                      {cat.title}
-                    </button>
-                  ))}
+                <div className="border-t border-gold/20 pt-6">
+                  <h3 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-gold" />
+                    Popular Categories
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.slice(0, 8).map(cat => (
+                      <motion.button
+                        key={cat.id}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setActiveCategory(cat.slug || cat.id);
+                          setShowSearch(false);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 border border-gold/30 text-gold text-sm font-medium hover:border-gold/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-all"
+                      >
+                        {cat.title || cat.name}
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -369,14 +434,14 @@ export default function MobileMarketplace() {
         )}
       </AnimatePresence>
 
-      {/* Sort Bottom Sheet */}
+      {/* Premium Sort Bottom Sheet */}
       <AnimatePresence>
         {showSort && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md"
             onClick={() => setShowSort(false)}
           >
             <motion.div
@@ -384,26 +449,31 @@ export default function MobileMarketplace() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-area-inset-bottom border-t border-gold/20"
+              className="absolute bottom-0 left-0 right-0 bg-gradient-to-b from-card via-[hsl(var(--blue-light))] to-card rounded-t-3xl p-6 safe-area-inset-bottom border-t-2 border-gold/30 shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-10 h-1 rounded-full bg-border mx-auto mb-6" />
-              <h3 className="font-serif font-semibold text-lg mb-4">Sort By</h3>
+              <div className="flex justify-center mb-6">
+                <div className="w-12 h-1 rounded-full bg-gold/40" />
+              </div>
+              <h3 className="font-serif font-bold text-xl mb-6 text-center text-foreground">Sort By</h3>
               <div className="space-y-2">
                 {sortOptions.map(option => (
-                  <button
+                  <motion.button
                     key={option.id}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setSortBy(option.id);
                       setShowSort(false);
                     }}
                     className={cn(
-                      "w-full p-3 rounded-xl text-left transition-colors",
-                      sortBy === option.id ? "bg-gold text-background font-medium" : "hover:bg-secondary"
+                      "w-full p-4 rounded-2xl text-left transition-all font-medium",
+                      sortBy === option.id 
+                        ? "bg-gradient-to-r from-gold via-gold-light to-gold text-primary-foreground shadow-[0_8px_32px_hsl(var(--gold)/0.4)]" 
+                        : "bg-card border border-gold/20 text-foreground hover:border-gold/40"
                     )}
                   >
                     {option.label}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </motion.div>
@@ -411,14 +481,14 @@ export default function MobileMarketplace() {
         )}
       </AnimatePresence>
 
-      {/* Filters Bottom Sheet */}
+      {/* Premium Filters Bottom Sheet */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md"
             onClick={() => setShowFilters(false)}
           >
             <motion.div
@@ -426,18 +496,32 @@ export default function MobileMarketplace() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto safe-area-inset-bottom border-t border-gold/20"
+              className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 max-h-[85vh] overflow-y-auto safe-area-inset-bottom border-t-2 border-gold/30 shadow-2xl"
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-10 h-1 rounded-full bg-border mx-auto mb-6" />
+              <div className="flex justify-center mb-6">
+                <div className="w-12 h-1 rounded-full bg-gold/40" />
+              </div>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-serif font-semibold text-lg">Filters</h3>
-                <button className="text-sm text-gold">Clear All</button>
+                <h3 className="font-serif font-bold text-xl text-foreground">Filters</h3>
+                <button 
+                  onClick={() => {
+                    setPriceRange([0, 500000]);
+                    setSelectedMetals([]);
+                    setSelectedRarity([]);
+                  }}
+                  className="text-sm text-gold font-semibold hover:text-gold-light transition-colors"
+                >
+                  Clear All
+                </button>
               </div>
 
               {/* Price Range */}
-              <div className="mb-6">
-                <h4 className="font-medium mb-3">Price Range</h4>
+              <div className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-muted via-[hsl(var(--blue))] to-muted border-2 border-gold/30">
+                <h4 className="font-semibold mb-4 text-foreground flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-gold" />
+                  Price Range
+                </h4>
                 <div className="px-2">
                   <Slider
                     defaultValue={[0, 500000]}
@@ -445,64 +529,66 @@ export default function MobileMarketplace() {
                     step={5000}
                     value={priceRange}
                     onValueChange={setPriceRange}
-                    className="mb-2"
+                    className="mb-3"
                   />
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>₹{priceRange[0].toLocaleString()}</span>
-                    <span>₹{priceRange[1].toLocaleString()}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gold font-semibold">₹{priceRange[0].toLocaleString()}</span>
+                    <span className="text-gold font-semibold">₹{priceRange[1].toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* Metal */}
               <div className="mb-6">
-                <h4 className="font-medium mb-3">Metal</h4>
+                <h4 className="font-semibold mb-3 text-foreground">Metal Type</h4>
                 <div className="flex flex-wrap gap-2">
                   {metalOptions.map(metal => (
-                    <button
+                    <motion.button
                       key={metal}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedMetals(prev =>
                         prev.includes(metal) ? prev.filter(m => m !== metal) : [...prev, metal]
                       )}
                       className={cn(
-                        "px-4 py-2 rounded-xl text-sm border transition-all",
+                        "px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all",
                         selectedMetals.includes(metal)
-                          ? "bg-gold text-background border-gold"
-                          : "bg-secondary border-border"
+                          ? "bg-gradient-to-r from-gold via-gold-light to-gold text-primary-foreground border-gold shadow-[0_4px_16px_hsl(var(--gold)/0.3)]"
+                          : "bg-card border-gold/20 text-foreground hover:border-gold/40"
                       )}
                     >
                       {metal}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
 
               {/* Rarity */}
               <div className="mb-6">
-                <h4 className="font-medium mb-3">Rarity</h4>
+                <h4 className="font-semibold mb-3 text-foreground">Rarity</h4>
                 <div className="flex flex-wrap gap-2">
                   {rarityOptions.map(rarity => (
-                    <button
+                    <motion.button
                       key={rarity}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedRarity(prev =>
                         prev.includes(rarity) ? prev.filter(r => r !== rarity) : [...prev, rarity]
                       )}
                       className={cn(
-                        "px-4 py-2 rounded-xl text-sm border transition-all",
+                        "px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all",
                         selectedRarity.includes(rarity)
-                          ? "bg-gold text-background border-gold"
-                          : "bg-secondary border-border"
+                          ? "bg-gradient-to-r from-gold via-gold-light to-gold text-primary-foreground border-gold shadow-[0_4px_16px_hsl(var(--gold)/0.3)]"
+                          : "bg-card border-gold/20 text-foreground hover:border-gold/40"
                       )}
                     >
                       {rarity}
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               </div>
 
               {/* Apply Button */}
               <Button
-                className="w-full btn-gold rounded-xl h-12"
+                className="w-full h-14 rounded-2xl bg-gradient-to-r from-gold via-gold-light to-gold text-primary-foreground font-bold text-base shadow-[0_8px_32px_hsl(var(--gold)/0.4)] hover:shadow-[0_12px_40px_hsl(var(--gold)/0.5)]"
                 onClick={() => setShowFilters(false)}
               >
                 Apply Filters

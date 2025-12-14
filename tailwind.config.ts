@@ -77,10 +77,22 @@ export default {
           border: "rgba(212, 175, 55, 0.2)", // Gold border with opacity
         },
         gold: {
-          DEFAULT: "#D4AF37",
-          light: "#F4D06F",
-          dark: "#B0892F",
-          muted: "rgba(212, 175, 55, 0.4)",
+          DEFAULT: "hsl(var(--gold))",
+          light: "hsl(var(--gold-light))",
+          dark: "hsl(var(--gold-dark))",
+          muted: "hsl(var(--gold-muted))",
+        },
+        brown: {
+          DEFAULT: "hsl(var(--brown))",
+          light: "hsl(var(--brown-light))",
+          dark: "hsl(var(--brown-dark))",
+          muted: "hsl(var(--brown-muted))",
+        },
+        blue: {
+          DEFAULT: "hsl(var(--blue))",
+          light: "hsl(var(--blue-light))",
+          dark: "hsl(var(--blue-dark))",
+          muted: "hsl(var(--blue-muted))",
         },
       },
       borderRadius: {

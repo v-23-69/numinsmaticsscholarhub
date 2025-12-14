@@ -49,12 +49,12 @@ export function FeedShowcaseCard({
       viewport={{ once: true }}
       className="mx-4 my-4"
     >
-      <div className="card-gold-trim overflow-hidden">
+      <div className="card-gold-trim overflow-hidden shadow-xl">
         {/* Type badge ribbon */}
         <div className="absolute top-3 left-3 z-10">
           <div className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold",
-            "bg-card/90 backdrop-blur-sm border border-gold/30"
+            "bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 backdrop-blur-sm border-2 border-gold/40 shadow-lg"
           )}>
             <Icon className={cn("w-3.5 h-3.5", config.color)} />
             <span className={config.color}>{config.label}</span>
@@ -106,7 +106,7 @@ export function FeedShowcaseCard({
           {/* CTA */}
           <Link
             to={ctaLink || (coinId ? `/marketplace/coin/${coinId}` : "#")}
-            className="flex items-center justify-between w-full p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
+            className="flex items-center justify-between w-full p-3 rounded-xl bg-gradient-to-r from-muted via-[hsl(var(--blue))] to-muted border-2 border-gold/30 hover:border-gold/50 hover:from-gold/15 hover:via-gold/10 hover:to-gold/15 transition-all group shadow-lg hover:shadow-[0_4px_16px_hsl(var(--gold)/0.2)]"
           >
             <span className="text-sm font-medium">{ctaLabel}</span>
             <ChevronRight className="w-5 h-5 text-gold transition-transform group-hover:translate-x-1" />
@@ -132,11 +132,11 @@ export function FeedCompactCard({
   return (
     <Link
       to={ctaLink || "#"}
-      className="mx-4 my-2 flex items-center gap-4 p-3 card-museum"
+      className="mx-4 my-2 flex items-center gap-4 p-3 card-museum border-2 border-gold/20 hover:border-gold/40 transition-all group"
     >
-      <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0">
+      <div className="relative w-20 h-20 rounded-lg overflow-hidden shrink-0 border-2 border-gold/20 group-hover:border-gold/40 transition-colors">
         <img src={image} alt="" className="w-full h-full object-cover" />
-        <div className="absolute top-1 left-1">
+        <div className="absolute top-1 left-1 bg-gradient-to-br from-gold/20 to-gold/10 backdrop-blur-sm rounded-lg p-1 border border-gold/30">
           <Icon className={cn("w-4 h-4", config.color)} />
         </div>
       </div>
@@ -144,12 +144,12 @@ export function FeedCompactCard({
         <span className={cn("text-[10px] font-semibold uppercase tracking-wide", config.color)}>
           {config.label}
         </span>
-        <h4 className="font-serif font-semibold text-sm line-clamp-1 mt-0.5">{title}</h4>
+        <h4 className="font-serif font-semibold text-sm line-clamp-1 mt-0.5 group-hover:text-gold transition-colors">{title}</h4>
         {coinPrice && (
           <p className="text-gold font-bold mt-1">₹{coinPrice.toLocaleString()}</p>
         )}
       </div>
-      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 group-hover:text-gold group-hover:translate-x-1 transition-all" />
     </Link>
   );
 }
