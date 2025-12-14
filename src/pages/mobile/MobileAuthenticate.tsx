@@ -22,6 +22,8 @@ export default function MobileAuthenticate() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showSourceSelector, setShowSourceSelector] = useState<"front" | "back" | null>(null);
+  const [queries, setQueries] = useState("");
+  const [activeSession, setActiveSession] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
@@ -29,28 +31,94 @@ export default function MobileAuthenticate() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) fetchWalletBalance();
+    if (user) {
+      fetchWalletBalance();
+      checkActiveSession();
+    }
   }, [user]);
 
-  const fetchWalletBalance = async () => {
-    if (!user) return;
+  const checkActiveSession = async () => {
+    if (!user?.id) return;
     try {
-      // Use RPC function to get balance (creates wallet if doesn't exist)
-      const { data, error } = await supabase.rpc('get_wallet_balance');
-      if (error) {
-        console.error('Error fetching wallet:', error);
-        // Fallback: try direct query
-        const { data: walletData } = await supabase
-          .from('nsh_wallets')
-          .select('balance')
-          .eq('user_id', user.id)
-          .single();
-        setWalletBalance(walletData?.balance || 0);
-      } else {
-        setWalletBalance(data || 0);
+      const { data, error } = await supabase
+        .from('auth_requests')
+        .select('id, status, assigned_expert_id, created_at')
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'in_review'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!error && data) {
+        // Check if session is still active (not completed and within 5 minutes or has expert assigned)
+        const sessionAge = Date.now() - new Date(data.created_at).getTime();
+        const fiveMinutes = 5 * 60 * 1000;
+        
+        if (data.status === 'in_review' || (data.status === 'pending' && sessionAge < fiveMinutes)) {
+          setActiveSession(data);
+        }
       }
     } catch (error) {
-      console.error('Error fetching wallet balance:', error);
+      console.error('Error checking active session:', error);
+    }
+  };
+
+  const fetchWalletBalance = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // Check wallet balance - use maybeSingle() to handle missing wallets
+      const { data, error } = await (supabase.from('nsh_wallets' as any) as any)
+        .select('balance')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) {
+        // If it's a 403 or permission error, try to create wallet
+        // This can happen if wallet doesn't exist yet
+        const isPermissionError = error.code === 'PGRST301' || 
+                                  error.code === '42501' || 
+                                  (error as any).status === 403 || 
+                                  error.message?.includes('permission') || 
+                                  error.message?.includes('row-level security');
+        
+        if (isPermissionError) {
+          console.log('Wallet not found or not accessible, creating new wallet with 500 coins...');
+          // Try to create wallet with 500 coins using RPC (bypasses RLS)
+          const { error: rpcError } = await (supabase.rpc as any)('claim_demo_coins');
+          if (!rpcError) {
+            // Successfully created, fetch again to get the balance
+            const { data: newData } = await (supabase.from('nsh_wallets' as any) as any)
+              .select('balance')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            setWalletBalance(newData ? Number((newData as any).balance) : 500);
+            return;
+          } else {
+            console.warn('Failed to create wallet via RPC:', rpcError);
+            setWalletBalance(0);
+            return;
+          }
+        }
+        console.warn('Error fetching wallet (non-blocking):', error);
+        setWalletBalance(0); // Default to 0 if we can't fetch
+        return;
+      }
+      
+      if (data) {
+        setWalletBalance(Number((data as any).balance) || 0);
+      } else {
+        // Wallet doesn't exist, create it with 500 coins
+        const { error: rpcError } = await (supabase.rpc as any)('claim_demo_coins');
+        if (!rpcError) {
+          setWalletBalance(500);
+        } else {
+          console.warn('Failed to create wallet:', rpcError);
+          setWalletBalance(0);
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching wallet:', err);
       setWalletBalance(0);
     }
   };
@@ -82,17 +150,8 @@ export default function MobileAuthenticate() {
   };
 
   const handlePaymentAndSubmit = async () => {
-    if (!captures.front || !captures.back) {
-      toast({ title: "Missing Images", description: "Please upload both front and back images", variant: "destructive" });
-      return;
-    }
-
     if (walletBalance < 50) {
-      toast({ 
-        title: "Insufficient Balance", 
-        description: `You need 50 NSH coins. Current balance: ${walletBalance} NSH`, 
-        variant: "destructive" 
-      });
+      toast({ title: "Insufficient Balance", description: "Please top up your NSH Wallet", variant: "destructive" });
       return;
     }
 
@@ -112,53 +171,50 @@ export default function MobileAuthenticate() {
       }
 
       // 2. Process Payment via RPC
-      const { data: paymentSuccess, error: payError } = await supabase.rpc('pay_for_auth_request', { amount: 50 });
-      
-      if (payError) {
-        console.error('Payment error:', payError);
-        throw new Error("Payment failed: " + payError.message);
-      }
-      
-      if (!paymentSuccess) {
-        throw new Error("Insufficient balance or payment failed");
-      }
+      const { data: success, error: payError } = await supabase.rpc('pay_for_auth_request' as any, { amount: 50 });
+      if (payError || !success) throw new Error("Payment failed");
 
-      // 3. Create Request with images as array
-      const { data: request, error: reqError } = await supabase
-        .from('auth_requests')
-        .insert({
-          user_id: user?.id,
-          images: [frontUrl, backUrl], // Store as array
-          status: 'pending',
-          paid: true,
-          paid_amount: 50
-        })
-        .select()
-        .single();
+      // 3. Create Request
+      // images should be an array of image URLs, not an object
+      const { data: request, error: reqError } = await supabase.from('auth_requests').insert({
+        user_id: user?.id,
+        images: [frontUrl, backUrl].filter(Boolean), // Store as array of URLs
+        status: 'pending',
+        paid: true,
+        paid_amount: 50
+      }).select().single();
 
-      if (reqError) {
-        console.error('Request creation error:', reqError);
-        throw new Error("Failed to create request: " + reqError.message);
-      }
+      if (reqError) throw new Error("Failed to create request");
 
-      // Update wallet balance display
-      await fetchWalletBalance();
-
-      toast({ 
-        title: "Payment Successful!", 
-        description: "Request submitted. Waiting for expert assignment..." 
+      // 4. Create Chat Thread
+      const { error: threadError } = await supabase.from('threads').insert({
+        type: 'expert',
+        participant_ids: [user?.id], // Add expert ID later when assigned
+        auth_request_id: request.id
       });
 
-      // Redirect to chat (thread will be created when expert is assigned)
+      if (threadError) throw new Error("Failed to initialize session");
+
+      toast({ title: "Success!", description: "Request submitted. Connecting to expert..." });
+
+      // Send queries as first message if provided
+      if (queries.trim()) {
+        try {
+          await initCometChat();
+          await createCometChatUser(user.id, user.user_metadata?.full_name || user.email?.split('@')[0] || 'User');
+          await loginCometChat(user.id);
+          // Queries will be sent after expert accepts and chat is set up
+        } catch (error) {
+          console.error('Error setting up chat for queries:', error);
+        }
+      }
+
+      // Redirect to Chat
       navigate(`/expert-chat/${request.id}`);
 
     } catch (error: any) {
-      console.error('Error in payment/submit:', error);
-      toast({ 
-        title: "Error", 
-        description: error.message || "Something went wrong. Please try again.", 
-        variant: "destructive" 
-      });
+      console.error(error);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -190,6 +246,29 @@ export default function MobileAuthenticate() {
       </header>
 
       <main className="px-4 py-4">
+        {/* Active Session Banner */}
+        {activeSession && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 p-4 bg-gold/10 border border-gold/30 rounded-xl flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <MessageCircle className="w-5 h-5 text-gold" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Active Session</p>
+                <p className="text-xs text-muted-foreground">Return to your chat</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate(`/expert-chat/${activeSession.id}`)}
+              className="bg-gold text-black hover:bg-gold-light h-9 px-4"
+            >
+              Back to Chat
+            </Button>
+          </motion.div>
+        )}
+
         <AnimatePresence mode="wait">
           {/* Capture Step */}
           {step === "capture" && (
@@ -217,66 +296,54 @@ export default function MobileAuthenticate() {
 
               <div className="grid grid-cols-2 gap-4">
                 {/* Front Trigger */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={() => setShowSourceSelector('front')}
                   className={cn(
-                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 transition-all overflow-hidden group",
-                    captures.front 
-                      ? "border-2 border-gold bg-gold/10 shadow-lg shadow-gold/30" 
-                      : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50 hover:bg-gold/5"
+                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden",
+                    captures.front ? "border-2 border-gold bg-gold/5" : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
                   )}
                 >
                   {captures.front ? (
-                    <>
-                      <img src={captures.front} alt="Front" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Check className="w-4 h-4 text-background" />
-                      </div>
-                    </>
+                    <img src={captures.front} alt="Front" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
-                        <Camera className="w-8 h-8 text-gold" />
-                      </div>
-                      <span className="text-sm font-semibold text-gold">Front Side</span>
-                      <span className="text-xs text-muted-foreground">Tap to capture</span>
+                      <Camera className="w-10 h-10 text-gold" />
+                      <span className="text-sm font-medium text-gold">Front Side</span>
                     </>
                   )}
-                </motion.button>
+                </button>
 
                 {/* Back Trigger */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={() => setShowSourceSelector('back')}
                   className={cn(
-                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-3 transition-all overflow-hidden group",
-                    captures.back 
-                      ? "border-2 border-gold bg-gold/10 shadow-lg shadow-gold/30" 
-                      : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50 hover:bg-gold/5"
+                    "relative aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 transition-all overflow-hidden",
+                    captures.back ? "border-2 border-gold bg-gold/5" : "border-2 border-dashed border-gold/40 hover:border-gold bg-card/50"
                   )}
                 >
                   {captures.back ? (
-                    <>
-                      <img src={captures.back} alt="Back" className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Check className="w-4 h-4 text-background" />
-                      </div>
-                    </>
+                    <img src={captures.back} alt="Back" className="w-full h-full object-cover" />
                   ) : (
                     <>
-                      <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
-                        <Camera className="w-8 h-8 text-gold" />
-                      </div>
-                      <span className="text-sm font-semibold text-gold">Back Side</span>
-                      <span className="text-xs text-muted-foreground">Tap to capture</span>
+                      <Camera className="w-10 h-10 text-gold" />
+                      <span className="text-sm font-medium text-gold">Back Side</span>
                     </>
                   )}
-                </motion.button>
+                </button>
+              </div>
+
+              {/* Queries Section */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Add Your Queries (Optional)</label>
+                <textarea
+                  value={queries}
+                  onChange={(e) => setQueries(e.target.value)}
+                  placeholder="Ask any questions about your coin authentication..."
+                  className="w-full min-h-[100px] p-4 rounded-xl bg-card border border-gold/30 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gold/50 resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your queries will be sent directly to the expert when the chat starts
+                </p>
               </div>
 
               <Button
@@ -303,41 +370,25 @@ export default function MobileAuthenticate() {
                 <img src={captures.back} className="aspect-square rounded-xl object-cover border border-white/10" />
               </div>
 
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="p-6 rounded-2xl bg-card border-2 border-gold/30 shadow-lg shadow-gold/20 text-center space-y-5"
-              >
+              <div className="p-6 rounded-2xl bg-card border border-gold/30 text-center space-y-4">
                 <div>
-                  <p className="text-sm text-muted-foreground mb-2 uppercase tracking-wide">Authentication Fee</p>
-                  <p className="text-5xl font-serif font-bold gold-text">50 <span className="text-2xl">NSH</span></p>
+                  <p className="text-sm text-muted-foreground mb-1">Authentication Fee</p>
+                  <p className="text-4xl font-serif font-bold text-gold">50 <span className="text-lg">NSH</span></p>
                 </div>
 
-                <div className="bg-muted/50 p-4 rounded-xl border border-gold/20 flex justify-between items-center">
-                  <span className="text-muted-foreground font-medium">Your Balance</span>
-                  <div className="flex items-center gap-2">
-                    <Wallet className={cn("w-4 h-4", walletBalance >= 50 ? "text-gold" : "text-red-400")} />
-                    <span className={cn("font-bold text-lg", walletBalance >= 50 ? "text-gold" : "text-red-400")}>
-                      {walletBalance} NSH
-                    </span>
-                  </div>
+                <div className="bg-black/20 p-3 rounded-lg flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Your Balance</span>
+                  <span className={walletBalance >= 50 ? "text-green-500" : "text-red-500"}>
+                    {walletBalance} NSH
+                  </span>
                 </div>
 
                 {walletBalance < 50 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <Button 
-                      variant="outline" 
-                      className="w-full border-gold/50 text-gold hover:bg-gold/10" 
-                      onClick={() => toast({ title: "Coming Soon", description: "Top-up feature is in development" })}
-                    >
-                      Top Up Wallet
-                    </Button>
-                  </motion.div>
+                  <Button variant="outline" className="w-full border-gold/50 text-gold" onClick={() => toast({ title: "Coming Soon", description: "Top-up feature is in development" })}>
+                    Top Up Wallet
+                  </Button>
                 )}
-              </motion.div>
+              </div>
 
               <Button
                 className="w-full btn-gold rounded-xl h-14"

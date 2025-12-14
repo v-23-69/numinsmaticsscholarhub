@@ -100,76 +100,76 @@
 
   .dark {
     /* ─────────────────────────────────────────────────────────────────────────
-       DARK THEME: Premium Matte-Black + Gold (#D4AF37) (Royal Luxury)
+       DARK THEME: Premium Black + Gold (Royal Luxury)
        ───────────────────────────────────────────────────────────────────────── */
     
-    /* Base Colors - Matte Black */
-    --background: 0 0% 4%;
-    --foreground: 45 20% 95%;
+    /* Base Colors */
+    --background: 220 10% 4%;
+    --foreground: 45 30% 92%;
     
-    /* Surface Colors - Deep Charcoal */
-    --card: 0 0% 8%;
-    --card-foreground: 45 20% 95%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 45 20% 95%;
+    /* Surface Colors */
+    --card: 220 8% 8%;
+    --card-foreground: 45 30% 92%;
+    --popover: 220 8% 10%;
+    --popover-foreground: 45 30% 92%;
     
-    /* Primary - Premium Gold #D4AF37 */
-    --primary: 43 74% 52%;
-    --primary-foreground: 0 0% 4%;
+    /* Primary - Premium Gold */
+    --primary: 43 65% 52%;
+    --primary-foreground: 220 10% 4%;
     
     /* Secondary - Dark Stone */
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 45 15% 88%;
+    --secondary: 220 6% 14%;
+    --secondary-foreground: 45 25% 85%;
     
     /* Muted - Subtle Charcoal */
-    --muted: 0 0% 14%;
-    --muted-foreground: 45 10% 65%;
+    --muted: 220 6% 16%;
+    --muted-foreground: 45 15% 60%;
     
     /* Accent - Bright Gold */
-    --accent: 43 80% 58%;
-    --accent-foreground: 0 0% 4%;
+    --accent: 45 70% 58%;
+    --accent-foreground: 220 10% 4%;
     
     /* Destructive */
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
     
     /* Border & Input */
-    --border: 0 0% 16%;
-    --input: 0 0% 12%;
-    --ring: 43 74% 52%;
+    --border: 220 6% 18%;
+    --input: 220 6% 15%;
+    --ring: 43 65% 52%;
     
     /* Chart Colors */
-    --chart-1: 43 74% 52%;
-    --chart-2: 45 80% 58%;
-    --chart-3: 0 0% 30%;
-    --chart-4: 0 0% 40%;
-    --chart-5: 0 0% 50%;
+    --chart-1: 43 65% 52%;
+    --chart-2: 45 70% 58%;
+    --chart-3: 220 6% 35%;
+    --chart-4: 220 6% 45%;
+    --chart-5: 220 6% 55%;
     
-    /* Gold Spectrum - Premium #D4AF37 */
-    --gold: 43 74% 52%;
-    --gold-light: 45 80% 58%;
-    --gold-dark: 42 70% 45%;
-    --gold-muted: 43 50% 45%;
+    /* Gold Spectrum - Dark Theme */
+    --gold: 43 65% 52%;
+    --gold-light: 45 70% 58%;
+    --gold-dark: 42 60% 42%;
+    --gold-muted: 43 40% 40%;
     
     /* Stone Spectrum - Dark Theme */
-    --stone: 0 0% 20%;
-    --stone-light: 0 0% 28%;
-    --stone-dark: 0 0% 12%;
+    --stone: 220 6% 25%;
+    --stone-light: 220 6% 35%;
+    --stone-dark: 220 6% 15%;
     
     /* Ivory & Cream - Dark Theme */
-    --ivory: 45 20% 95%;
-    --cream: 45 15% 88%;
-    --parchment: 0 0% 16%;
+    --ivory: 45 30% 92%;
+    --cream: 45 25% 85%;
+    --parchment: 220 6% 18%;
     
     /* Sidebar - Dark Theme */
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 45 20% 95%;
-    --sidebar-primary: 43 74% 52%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 45 80% 58%;
-    --sidebar-accent-foreground: 0 0% 4%;
-    --sidebar-border: 0 0% 16%;
-    --sidebar-ring: 43 74% 52%;
+    --sidebar-background: 220 8% 8%;
+    --sidebar-foreground: 45 30% 92%;
+    --sidebar-primary: 43 65% 52%;
+    --sidebar-primary-foreground: 220 10% 4%;
+    --sidebar-accent: 45 70% 58%;
+    --sidebar-accent-foreground: 220 10% 4%;
+    --sidebar-border: 220 6% 18%;
+    --sidebar-ring: 43 65% 52%;
   }
 }
 
@@ -295,22 +295,10 @@
   }
 
   .card-gold-trim {
-    @apply relative rounded-xl overflow-hidden transition-all duration-300;
+    @apply relative rounded-xl overflow-hidden;
     background: hsl(var(--card));
     border: 1px solid hsl(var(--gold) / 0.3);
-    box-shadow: 
-      0 4px 12px -2px hsl(var(--foreground) / 0.08), 
-      0 0 0 1px hsl(var(--gold) / 0.1),
-      0 2px 8px -2px hsl(var(--gold) / 0.1);
-  }
-
-  .card-gold-trim:hover {
-    transform: translateY(-4px) scale(1.02);
-    border-color: hsl(var(--gold) / 0.5);
-    box-shadow: 
-      0 8px 24px -4px hsl(var(--foreground) / 0.12), 
-      0 0 0 1px hsl(var(--gold) / 0.2),
-      0 4px 16px -4px hsl(var(--gold) / 0.2);
+    box-shadow: 0 4px 12px -2px hsl(var(--foreground) / 0.08), 0 0 0 1px hsl(var(--gold) / 0.1);
   }
 
   .card-embossed {
@@ -324,10 +312,6 @@
      Story Rings (Antique Museum Style)
      ───────────────────────────────────────────────────────────────────────── */
   
-  /* ─────────────────────────────────────────────────────────────────────────
-     Premium Story Bubbles (Hexagon & Rounded Rectangle with Gold Frame)
-     ───────────────────────────────────────────────────────────────────────── */
-  
   .story-ring {
     @apply relative rounded-full;
     padding: 3px;
@@ -339,16 +323,8 @@
       hsl(var(--gold)) 100%
     );
     box-shadow: 
-      0 0 20px hsl(var(--gold) / 0.4),
-      inset 0 0 12px hsl(var(--gold-dark) / 0.3);
-    transition: all 0.3s ease;
-  }
-
-  .story-ring:hover {
-    transform: scale(1.05);
-    box-shadow: 
-      0 0 30px hsl(var(--gold) / 0.6),
-      inset 0 0 15px hsl(var(--gold-dark) / 0.4);
+      0 0 15px hsl(var(--gold) / 0.3),
+      inset 0 0 10px hsl(var(--gold-dark) / 0.3);
   }
 
   .story-ring-inactive {
@@ -359,52 +335,6 @@
       hsl(var(--stone-light)) 50%,
       hsl(var(--stone)) 100%
     );
-    transition: all 0.3s ease;
-  }
-
-  .story-hexagon {
-    @apply relative;
-    width: 68px;
-    height: 68px;
-    clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
-    padding: 3px;
-    background: linear-gradient(135deg, 
-      hsl(var(--gold)) 0%, 
-      hsl(var(--gold-light)) 50%,
-      hsl(var(--gold)) 100%
-    );
-    box-shadow: 
-      0 0 20px hsl(var(--gold) / 0.4),
-      inset 0 0 10px hsl(var(--gold-dark) / 0.3);
-    transition: all 0.3s ease;
-  }
-
-  .story-hexagon:hover {
-    transform: scale(1.08) rotate(5deg);
-    box-shadow: 
-      0 0 35px hsl(var(--gold) / 0.6),
-      inset 0 0 15px hsl(var(--gold-dark) / 0.4);
-  }
-
-  .story-rectangle {
-    @apply relative rounded-2xl;
-    padding: 3px;
-    background: linear-gradient(135deg, 
-      hsl(var(--gold)) 0%, 
-      hsl(var(--gold-light)) 50%,
-      hsl(var(--gold)) 100%
-    );
-    box-shadow: 
-      0 0 20px hsl(var(--gold) / 0.4),
-      inset 0 0 10px hsl(var(--gold-dark) / 0.3);
-    transition: all 0.3s ease;
-  }
-
-  .story-rectangle:hover {
-    transform: scale(1.05);
-    box-shadow: 
-      0 0 35px hsl(var(--gold) / 0.6),
-      inset 0 0 15px hsl(var(--gold-dark) / 0.4);
   }
 
 
@@ -523,27 +453,15 @@
      ───────────────────────────────────────────────────────────────────────── */
   
   .message-tile-user {
-    @apply rounded-xl px-4 py-3 transition-all duration-200;
+    @apply rounded-xl px-4 py-3;
     background: hsl(var(--card));
-    border: 1px solid hsl(var(--gold) / 0.3);
-    box-shadow: 0 2px 8px -2px hsl(var(--gold) / 0.15);
-  }
-
-  .message-tile-user:hover {
-    border-color: hsl(var(--gold) / 0.5);
-    box-shadow: 0 4px 12px -2px hsl(var(--gold) / 0.25);
+    border: 1px solid hsl(var(--gold) / 0.25);
   }
 
   .message-tile-expert {
-    @apply rounded-xl px-4 py-3 transition-all duration-200;
-    background: hsl(var(--muted) / 0.6);
+    @apply rounded-xl px-4 py-3;
+    background: hsl(var(--muted) / 0.5);
     border: 1px solid hsl(var(--border));
-    box-shadow: 0 2px 8px -2px hsl(var(--foreground) / 0.05);
-  }
-
-  .message-tile-expert:hover {
-    background: hsl(var(--muted) / 0.7);
-    box-shadow: 0 4px 12px -2px hsl(var(--foreground) / 0.08);
   }
 
   /* ─────────────────────────────────────────────────────────────────────────
@@ -616,6 +534,331 @@
   .tap-highlight-none {
     -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMETCHAT UI CUSTOM STYLES - Premium Chat UI
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Import CometChat base styles if available - commented out if it causes issues */
+/* @import url("@cometchat/chat-uikit-react/css-variables.css"); */
+
+/* Ensure CometChat components are visible and properly styled */
+.cometchat__message-list,
+.cometchat__message-composer,
+[class*="cometchat"],
+[class*="CometChat"],
+div[class*="CometChat"] {
+  height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  font-family: inherit !important;
+}
+
+/* Message list container - ensure it takes full height */
+.cometchat__message-list-wrapper,
+.cometchat__messages-container,
+div[class*="MessageList"],
+div[class*="message-list"] {
+  height: 100% !important;
+  width: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 1rem !important;
+  gap: 0.75rem !important;
+}
+
+/* Message composer container */
+.cometchat__message-composer-wrapper,
+.cometchat__composer-container,
+div[class*="MessageComposer"],
+div[class*="message-composer"] {
+  width: 100% !important;
+  background: hsl(var(--card) / 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0.75rem 1rem !important;
+  border-top: 1px solid hsl(var(--border)) !important;
+}
+
+/* Outgoing message bubbles (sent by current user) - Gold theme */
+.cometchat__message-bubble-outgoing,
+.cometchat__message-bubble[class*="outgoing"],
+div[class*="MessageBubble"][class*="outgoing"],
+div[class*="message-bubble"][class*="outgoing"] {
+  background: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 100%) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+  border-radius: 1rem 1rem 0.25rem 1rem !important;
+  padding: 0.75rem 1rem !important;
+  box-shadow: 0 2px 8px hsl(var(--gold) / 0.2) !important;
+  max-width: 75% !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Incoming message bubbles (received) - Card theme */
+.cometchat__message-bubble-incoming,
+.cometchat__message-bubble[class*="incoming"],
+div[class*="MessageBubble"][class*="incoming"],
+div[class*="message-bubble"][class*="incoming"] {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 1rem 1rem 1rem 0.25rem !important;
+  padding: 0.75rem 1rem !important;
+  box-shadow: 0 2px 4px hsl(var(--foreground) / 0.05) !important;
+  max-width: 75% !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+/* Message text styling */
+.cometchat__message-text,
+.cometchat__message-bubble p,
+.cometchat__message-bubble span,
+div[class*="MessageBubble"] p,
+div[class*="MessageBubble"] span {
+  color: inherit !important;
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+  word-wrap: break-word !important;
+}
+
+/* Input field styling - Premium look */
+.cometchat__input,
+.cometchat__text-input,
+.cometchat__composer-input,
+input[class*="cometchat"],
+textarea[class*="cometchat"],
+div[class*="Composer"] input,
+div[class*="Composer"] textarea {
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1.5px solid hsl(var(--border)) !important;
+  border-radius: 1.5rem !important;
+  padding: 0.75rem 1.25rem !important;
+  font-size: 0.9375rem !important;
+  transition: all 0.2s ease !important;
+  width: 100% !important;
+}
+
+.cometchat__input:focus,
+.cometchat__text-input:focus,
+.cometchat__composer-input:focus,
+input[class*="cometchat"]:focus,
+textarea[class*="cometchat"]:focus {
+  outline: none !important;
+  border-color: hsl(var(--gold)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--gold) / 0.1) !important;
+}
+
+/* Send button styling */
+.cometchat__send-button,
+button[class*="Send"],
+button[class*="send"] {
+  background: hsl(var(--gold)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+  border-radius: 50% !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 8px hsl(var(--gold) / 0.3) !important;
+}
+
+.cometchat__send-button:hover,
+button[class*="Send"]:hover {
+  background: hsl(var(--gold-light)) !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 4px 12px hsl(var(--gold) / 0.4) !important;
+}
+
+/* Timestamp styling */
+.cometchat__message-time,
+.cometchat__timestamp,
+div[class*="Timestamp"],
+span[class*="timestamp"] {
+  font-size: 0.6875rem !important;
+  color: hsl(var(--muted-foreground)) !important;
+  margin-top: 0.25rem !important;
+  opacity: 0.7 !important;
+}
+
+/* Avatar styling */
+.cometchat__avatar,
+.cometchat__message-avatar,
+div[class*="Avatar"],
+img[class*="avatar"] {
+  border-radius: 50% !important;
+  border: 2px solid hsl(var(--border)) !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  object-fit: cover !important;
+}
+
+/* Admin chat specific styles - Dark theme */
+.bg-admin-bg [class*="cometchat"],
+.bg-admin-bg div[class*="CometChat"] {
+  background: hsl(var(--admin-bg)) !important;
+  color: hsl(var(--admin-text)) !important;
+}
+
+.bg-admin-bg .cometchat__message-bubble-incoming,
+.bg-admin-bg div[class*="MessageBubble"][class*="incoming"] {
+  background: hsl(var(--admin-surface)) !important;
+  border-color: hsl(var(--admin-border)) !important;
+  color: hsl(var(--admin-text)) !important;
+}
+
+.bg-admin-bg .cometchat__message-bubble-outgoing,
+.bg-admin-bg div[class*="MessageBubble"][class*="outgoing"] {
+  background: linear-gradient(135deg, hsl(var(--admin-gold)) 0%, hsl(var(--admin-gold2)) 100%) !important;
+  color: hsl(var(--admin-bg)) !important;
+  box-shadow: 0 2px 8px hsl(var(--admin-gold) / 0.3) !important;
+}
+
+.bg-admin-bg .cometchat__input,
+.bg-admin-bg input[class*="cometchat"],
+.bg-admin-bg textarea[class*="cometchat"] {
+  background: hsl(var(--admin-surface)) !important;
+  color: hsl(var(--admin-text)) !important;
+  border-color: hsl(var(--admin-border)) !important;
+}
+
+.bg-admin-bg .cometchat__input:focus,
+.bg-admin-bg input[class*="cometchat"]:focus {
+  border-color: hsl(var(--admin-gold)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--admin-gold) / 0.2) !important;
+}
+
+.bg-admin-bg .cometchat__send-button,
+.bg-admin-bg button[class*="Send"] {
+  background: hsl(var(--admin-gold)) !important;
+  color: hsl(var(--admin-bg)) !important;
+}
+
+/* Ensure scrollable message area */
+.cometchat__messages,
+div[class*="Messages"],
+div[class*="messages"] {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  flex: 1 !important;
+  padding: 1rem !important;
+  scroll-behavior: smooth !important;
+}
+
+/* Custom scrollbar for messages */
+.cometchat__messages::-webkit-scrollbar,
+div[class*="Messages"]::-webkit-scrollbar {
+  width: 4px !important;
+}
+
+.cometchat__messages::-webkit-scrollbar-track,
+div[class*="Messages"]::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.cometchat__messages::-webkit-scrollbar-thumb,
+div[class*="Messages"]::-webkit-scrollbar-thumb {
+  background: hsl(var(--border)) !important;
+  border-radius: 2px !important;
+}
+
+.cometchat__messages::-webkit-scrollbar-thumb:hover,
+div[class*="Messages"]::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--gold)) !important;
+}
+
+/* Fix for CometChat UI Kit v6.3.6 */
+[data-cometchat] {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* Loading states */
+.cometchat__loading,
+div[class*="Loading"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2rem !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Empty state */
+.cometchat__empty,
+div[class*="Empty"] {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 3rem 1rem !important;
+  text-align: center !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* Additional CometChat UI Kit v6.3.6 specific styles */
+/* Target all possible CometChat class variations */
+[class*="cometchat-"],
+[class*="CometChat-"],
+[class*="cometchat_"],
+[class*="CometChat_"] {
+  font-family: inherit !important;
+}
+
+/* Message container */
+div[class*="MessageList"] > div,
+div[class*="message-list"] > div {
+  padding: 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+/* Composer input wrapper */
+div[class*="Composer"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+}
+
+/* Ensure proper spacing and layout */
+div[class*="CometChat"] > div {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Message wrapper */
+div[class*="Message"]:not([class*="MessageList"]):not([class*="MessageComposer"]) {
+  display: flex !important;
+  flex-direction: column !important;
+  margin-bottom: 0.75rem !important;
+}
+
+/* Improve overall chat container */
+div[class*="CometChat"] {
+  background: transparent !important;
+}
+
+/* Better focus states */
+.cometchat__input:focus-visible,
+input[class*="cometchat"]:focus-visible,
+textarea[class*="cometchat"]:focus-visible {
+  outline: 2px solid hsl(var(--gold)) !important;
+  outline-offset: 2px !important;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -698,24 +941,6 @@
   }
 }
 
-@keyframes gold-pulse {
-  0%, 100% {
-    box-shadow: 0 0 15px hsl(var(--gold) / 0.3);
-  }
-  50% {
-    box-shadow: 0 0 30px hsl(var(--gold) / 0.6);
-  }
-}
-
-@keyframes shimmer-gold {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
 /* Animation Classes */
 .animate-shimmer {
   animation: shimmer 2s infinite;
@@ -743,21 +968,6 @@
 
 .animate-slide-up {
   animation: slide-up 0.3s ease-out forwards;
-}
-
-.animate-gold-pulse {
-  animation: gold-pulse 2s ease-in-out infinite;
-}
-
-.animate-shimmer-gold {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    hsl(var(--gold) / 0.2),
-    transparent
-  );
-  background-size: 200% 100%;
-  animation: shimmer-gold 2s infinite;
 }
 
 /* Transition Utilities */

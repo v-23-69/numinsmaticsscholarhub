@@ -18,68 +18,48 @@ export function CategoryGrid4x4({ categories, activeCategory, onCategorySelect }
           return (
             <motion.button
               key={category.id}
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: index * 0.03, type: "spring", stiffness: 200 }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.02 }}
               whileTap={{ scale: 0.95 }}
-              whileHover={{ scale: 1.05, y: -2 }}
               onClick={() => onCategorySelect(category.slug)}
               className={cn(
-                "relative aspect-square rounded-xl flex flex-col items-center justify-center p-2.5 transition-all duration-300",
-                "border-2 overflow-hidden group",
+                "relative aspect-square rounded-xl flex flex-col items-center justify-center p-2 transition-all duration-300",
+                "border overflow-hidden",
                 isActive
-                  ? "border-gold bg-gold/15 shadow-lg shadow-gold/30"
-                  : "border-gold/30 bg-card hover:border-gold/60 hover:bg-gold/5"
+                  ? "border-gold bg-gold/10 shadow-gold"
+                  : "border-border/60 bg-card hover:border-gold/50"
               )}
             >
-              {/* Premium gold frame effect for active */}
+              {/* Active glow effect */}
               {isActive && (
-                <>
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="absolute inset-0 bg-gradient-to-br from-gold/20 via-transparent to-gold/10 rounded-xl"
-                  />
-                  {/* Animated gold border glow */}
-                  <motion.div
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 2 }}
-                    className="absolute inset-0 rounded-xl border-2 border-gold/50"
-                  />
-                </>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute inset-0 bg-gradient-radial from-gold/20 to-transparent"
+                />
               )}
 
               {/* Gold corner accents for active */}
               {isActive && (
                 <>
-                  <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-gold rounded-tl-xl" />
-                  <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-gold rounded-tr-xl" />
-                  <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-gold rounded-bl-xl" />
-                  <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-gold rounded-br-xl" />
+                  <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-gold rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-gold rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-gold rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-gold rounded-br-lg" />
                 </>
               )}
 
-              {/* Hover glow effect */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileHover={{ opacity: 1 }}
-                className="absolute inset-0 bg-gradient-radial from-gold/10 to-transparent rounded-xl"
-              />
-
               {/* Category emoji/icon placeholder */}
-              <motion.span
-                animate={isActive ? { scale: [1, 1.1, 1] } : {}}
-                transition={{ repeat: isActive ? Infinity : 0, duration: 2 }}
-                className="text-xl mb-1.5 relative z-10"
-              >
+              <span className="text-lg mb-1">
                 {getCategoryEmoji(category.slug)}
-              </motion.span>
+              </span>
 
               {/* Title */}
               <span
                 className={cn(
-                  "text-[10px] font-semibold text-center leading-tight line-clamp-2 relative z-10 transition-colors",
-                  isActive ? "text-gold" : "text-muted-foreground group-hover:text-foreground"
+                  "text-[9px] font-medium text-center leading-tight line-clamp-2",
+                  isActive ? "text-gold" : "text-muted-foreground"
                 )}
               >
                 {category.title}

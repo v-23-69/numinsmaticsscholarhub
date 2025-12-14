@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cometchat/chat-sdk-javascript": "^4.1.5",
+    "@cometchat/chat-uikit-react": "^6.3.6",
     "@fontsource/inter": "^5.2.8",
     "@fontsource/playfair-display": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",

@@ -46,56 +46,42 @@ export function FeedShowcaseCard({
     <motion.article
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      whileHover={{ y: -4 }}
-      transition={{ type: "spring", stiffness: 300 }}
+      viewport={{ once: true }}
       className="mx-4 my-4"
     >
-      <div className="card-gold-trim overflow-hidden group">
+      <div className="card-gold-trim overflow-hidden">
         {/* Type badge ribbon */}
-        <motion.div
-          initial={{ opacity: 0, x: -10 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          className="absolute top-3 left-3 z-10"
-        >
+        <div className="absolute top-3 left-3 z-10">
           <div className={cn(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold",
-            "bg-card/95 backdrop-blur-md border border-gold/40 shadow-lg shadow-gold/20"
+            "bg-card/90 backdrop-blur-sm border border-gold/30"
           )}>
             <Icon className={cn("w-3.5 h-3.5", config.color)} />
             <span className={config.color}>{config.label}</span>
           </div>
-        </motion.div>
+        </div>
 
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          <motion.img
+          <img
             src={image}
             alt={title}
-            className="w-full h-full object-cover"
-            whileHover={{ scale: 1.1 }}
-            transition={{ duration: 0.5 }}
+            className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
           />
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
 
           {/* Price tag for coins */}
           {coinPrice && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="absolute bottom-3 right-3 px-4 py-2 rounded-xl bg-gold text-primary-foreground font-bold text-sm shadow-lg shadow-gold/50"
-            >
+            <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-gold text-primary-foreground font-bold text-sm">
               ₹{coinPrice.toLocaleString()}
-            </motion.div>
+            </div>
           )}
         </div>
 
         {/* Content */}
-        <div className="p-5">
-          <h3 className="font-serif font-semibold text-lg leading-tight mb-2 group-hover:text-gold transition-colors">
+        <div className="p-4">
+          <h3 className="font-serif font-semibold text-lg leading-tight mb-1">
             {title}
           </h3>
           
@@ -104,31 +90,26 @@ export function FeedShowcaseCard({
           )}
 
           {description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
               {description}
             </p>
           )}
 
           {/* Rarity badge */}
           {coinRarity && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="inline-flex badge-rarity mb-4"
-            >
+            <div className="inline-flex badge-rarity mb-3">
               <Star className="w-3 h-3" />
               {coinRarity}
-            </motion.div>
+            </div>
           )}
 
           {/* CTA */}
           <Link
             to={ctaLink || (coinId ? `/marketplace/coin/${coinId}` : "#")}
-            className="flex items-center justify-between w-full p-3.5 rounded-xl bg-muted/50 hover:bg-gold/10 border border-gold/20 hover:border-gold/40 transition-all group/cta"
+            className="flex items-center justify-between w-full p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors group"
           >
-            <span className="text-sm font-medium group-hover/cta:text-gold transition-colors">{ctaLabel}</span>
-            <ChevronRight className="w-5 h-5 text-gold transition-transform group-hover/cta:translate-x-1" />
+            <span className="text-sm font-medium">{ctaLabel}</span>
+            <ChevronRight className="w-5 h-5 text-gold transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
       </div>

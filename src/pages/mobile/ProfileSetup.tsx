@@ -53,7 +53,7 @@ const ProfileSetup: React.FC = () => {
           bio: bio || null,
           avatar_url: avatarUrl || null,
         })
-        .eq('user_id', user.id);
+        .eq('id', user.id); // Use 'id' - in this schema, id IS the user_id
 
       if (error) throw error;
 

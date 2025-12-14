@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Settings, Bookmark, Star, ChevronRight,
-  Shield, Edit2, LogOut, Award, UserCheck, User, ShoppingBag, FileText, Palette, Sun, Moon, Monitor,
-  Wallet, LayoutDashboard, Coins, Plus
+  Shield, Edit2, LogOut, Award, UserCheck, User, ShoppingBag, FileText, Palette, LayoutDashboard, UserCog
 } from "lucide-react";
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import coinMughalFront from "@/assets/coin-mughal-front.jpg";
@@ -24,8 +22,8 @@ interface Profile {
   avatar_url: string | null;
   bio: string | null;
   is_verified: boolean | null;
-  role?: 'user' | 'expert' | 'admin' | null;
   badges: string[];
+  role?: string | null; // 'user' | 'expert' | 'admin'
 }
 
 const tabs = [
@@ -44,49 +42,69 @@ const mockWishlist = [
 export default function MobileProfile() {
   const [activeTab, setActiveTab] = useState("wishlist");
   const [showSettings, setShowSettings] = useState(false);
-  const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [userRole, setUserRole] = useState<string | null>(null); // For user_roles table
   const { user, signOut } = useAuth();
-  const { theme, setTheme, resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
       fetchProfile();
-      fetchWalletBalance();
+      fetchUserRole();
     }
   }, [user]);
 
   const fetchProfile = async () => {
     if (!user) return;
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-      if (data) setProfile({ ...data, badges: Array.isArray(data.badges) ? data.badges as string[] : [] });
+      // Use 'id' instead of 'user_id' - in this schema, id IS the user_id
+      const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+      if (error) {
+        console.warn('Error fetching profile (non-blocking):', error);
+        return;
+      }
+      if (data) {
+        setProfile({ ...data, badges: Array.isArray(data.badges) ? data.badges as string[] : [] });
+      } else {
+        // Profile doesn't exist - this is okay, user might need to complete profile setup
+        console.log('Profile not found for user');
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
   };
 
-  const fetchWalletBalance = async () => {
+  const fetchUserRole = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase.rpc('get_wallet_balance');
-      if (error) {
-        // Fallback: direct query
-        const { data: walletData } = await supabase
-          .from('nsh_wallets')
-          .select('balance')
-          .eq('user_id', user.id)
-          .single();
-        setWalletBalance(walletData?.balance || 0);
-      } else {
-        setWalletBalance(data || 0);
+      // Check user_roles table (if using that schema)
+      const { data, error } = await (supabase.from('user_roles' as any) as any)
+        .select('role')
+        .eq('user_id', user.id);
+      
+      if (!error && data && data.length > 0) {
+        // Get all roles and find expert or admin
+        const roles = data.map((r: any) => r.role);
+        // Map app_role to simple role names
+        const roleMap: Record<string, string> = {
+          'admin_market': 'admin',
+          'master_admin': 'admin',
+          'expert': 'expert',
+          'buyer': 'user',
+          'seller': 'user'
+        };
+        
+        // Check for expert or admin roles
+        if (roles.includes('expert')) {
+          setUserRole('expert');
+        } else if (roles.includes('admin_market') || roles.includes('master_admin')) {
+          setUserRole('admin');
+        }
       }
     } catch (error) {
-      console.error('Error fetching wallet balance:', error);
-      setWalletBalance(0);
+      // user_roles table might not exist, that's okay
+      console.log('user_roles table not found or error (non-blocking):', error);
     }
   };
 
@@ -137,123 +155,71 @@ export default function MobileProfile() {
 
       <main className="px-4">
         {/* Profile Header */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="py-6 text-center"
-        >
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="story-ring w-28 h-28 mx-auto mb-5"
-          >
+        <section className="py-6 text-center">
+          <div className="story-ring w-24 h-24 mx-auto mb-4">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full rounded-full object-cover" />
             ) : (
               <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
-                <User className="w-12 h-12 text-muted-foreground" />
+                <User className="w-10 h-10 text-muted-foreground" />
               </div>
             )}
-          </motion.div>
-
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <h1 className="font-serif font-bold text-2xl">{profile?.display_name || 'Collector'}</h1>
-            {profile?.is_verified && (
-              <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ repeat: Infinity, duration: 2 }}
-              >
-                <Shield className="w-6 h-6 text-gold" />
-              </motion.div>
-            )}
           </div>
-          <p className="text-sm text-muted-foreground mb-4">{profile?.bio || 'Coin collector & enthusiast'}</p>
+
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <h1 className="font-serif font-bold text-xl">{profile?.display_name || 'Collector'}</h1>
+            {profile?.is_verified && <Shield className="w-5 h-5 text-gold" />}
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">{profile?.bio || 'Coin collector & enthusiast'}</p>
 
           {profile?.badges && profile.badges.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-wrap justify-center gap-2 mb-4"
-            >
-              {profile.badges.map((badge, index) => (
-                <motion.span
-                  key={badge}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                  className="badge-gold"
-                >
-                  {badge}
-                </motion.span>
+            <div className="flex flex-wrap justify-center gap-2">
+              {profile.badges.map((badge) => (
+                <span key={badge} className="badge-gold">{badge}</span>
               ))}
-            </motion.div>
+            </div>
           )}
 
-          <div className="flex gap-3 mt-6 max-w-xs mx-auto">
-            <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
-              <Button className="w-full btn-gold rounded-xl h-11" onClick={() => navigate('/profile/setup')}>
-                <Edit2 className="w-4 h-4 mr-2" />Edit
-              </Button>
-            </motion.div>
-            <motion.div whileTap={{ scale: 0.95 }} className="flex-1">
-              <Button variant="outline" className="w-full rounded-xl h-11 border-gold/40 hover:bg-gold/10">
-                Share
-              </Button>
-            </motion.div>
+          <div className="flex gap-2 mt-4 max-w-xs mx-auto">
+            <Button className="flex-1 btn-gold rounded-xl h-10" onClick={() => navigate('/profile/setup')}>
+              <Edit2 className="w-4 h-4 mr-2" />Edit
+            </Button>
+            <Button variant="outline" className="flex-1 rounded-xl h-10 border-gold/40">Share</Button>
           </div>
 
-          {/* NSH Wallet Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-6 mx-4"
-          >
-            <div className="card-gold-trim p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-gold" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-sm">NSH Wallet</h3>
-                    <p className="text-xs text-muted-foreground">Your coin balance</p>
-                  </div>
+          {/* Admin/Expert Dashboard Access */}
+          {(() => {
+            const role = profile?.role || userRole;
+            const isAdmin = role === 'admin' || role === 'admin_market' || role === 'master_admin';
+            const isExpert = role === 'expert';
+            
+            if (isAdmin || isExpert) {
+              return (
+                <div className="mt-4 max-w-xs mx-auto space-y-2">
+                  {isAdmin && (
+                    <Button 
+                      className="w-full btn-gold rounded-xl h-10" 
+                      onClick={() => navigate('/admin')}
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Admin Dashboard
+                    </Button>
+                  )}
+                  {isExpert && !isAdmin && (
+                    <Button 
+                      className="w-full btn-gold rounded-xl h-10" 
+                      onClick={() => navigate('/expert/dashboard')}
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Expert Dashboard
+                    </Button>
+                  )}
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold gold-text">{walletBalance}</p>
-                  <p className="text-xs text-muted-foreground">NSH Coins</p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                className="w-full border-gold/40 text-gold hover:bg-gold/10"
-                onClick={() => toast({ title: "Coming Soon", description: "Payment integration will be added soon" })}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Coins
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* Admin Dashboard Button (Role-based) */}
-          {(profile?.role === 'admin' || profile?.role === 'expert') && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="mt-4 mx-4"
-            >
-              <Button
-                className="w-full btn-gold rounded-xl h-12"
-                onClick={() => navigate('/admin')}
-              >
-                <LayoutDashboard className="w-5 h-5 mr-2" />
-                {profile?.role === 'admin' ? 'Admin Dashboard' : 'Expert Dashboard'}
-              </Button>
-            </motion.div>
-          )}
-        </motion.section>
+              );
+            }
+            return null;
+          })()}
+        </section>
 
         {/* Tabs */}
         <section className="sticky top-14 z-30 -mx-4 px-4 bg-background border-b border-border/60">
@@ -293,162 +259,29 @@ export default function MobileProfile() {
       </main>
 
       {/* Settings Drawer */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
-            onClick={() => setShowSettings(false)}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25 }}
-              className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl border-t border-gold/20"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 rounded-full bg-border" />
-              </div>
-              <nav className="p-4 space-y-2 pb-safe">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setShowSettings(false);
-                    setShowThemeSelector(true);
-                  }}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed transition-all"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center">
-                    <Palette className="w-5 h-5 text-gold" />
-                  </div>
-                  <span className="flex-1 font-medium text-left">Theme</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {theme === "dark" ? "Dark" : theme === "light" ? "Light" : "System"}
-                    </span>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                </motion.button>
-                <Link
-                  to="/settings"
-                  className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed transition-all"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                    <Settings className="w-5 h-5 text-gold" />
-                  </div>
-                  <span className="flex-1 font-medium">Settings</span>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </Link>
-                <Link
-                  to="/profile/setup"
-                  className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed transition-all"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                    <Edit2 className="w-5 h-5 text-gold" />
-                  </div>
-                  <span className="flex-1 font-medium">Edit Profile</span>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </Link>
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-destructive/10 card-embossed text-destructive transition-all"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center">
-                    <LogOut className="w-5 h-5" />
-                  </div>
-                  <span className="font-medium">Log Out</span>
-                </motion.button>
-              </nav>
-            </motion.div>
+      {showSettings && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm" onClick={() => setShowSettings(false)}>
+          <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} transition={{ type: "spring", damping: 25 }} className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center pt-3 pb-2"><div className="w-10 h-1 rounded-full bg-border" /></div>
+            <nav className="p-4 space-y-2 pb-safe">
+              <Link to="/settings" className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed">
+                <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center"><Palette className="w-5 h-5 text-gold" /></div>
+                <span className="flex-1 font-medium">Theme & Settings</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </Link>
+              <Link to="/profile/setup" className="flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 card-embossed">
+                <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center"><Edit2 className="w-5 h-5 text-gold" /></div>
+                <span className="flex-1 font-medium">Edit Profile</span>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </Link>
+              <button onClick={handleLogout} className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-destructive/10 card-embossed text-destructive">
+                <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center"><LogOut className="w-5 h-5" /></div>
+                <span className="font-medium">Log Out</span>
+              </button>
+            </nav>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Theme Selector Bottom Sheet */}
-      <AnimatePresence>
-        {showThemeSelector && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm"
-            onClick={() => setShowThemeSelector(false)}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-background rounded-t-3xl border-t border-gold/20"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 rounded-full bg-border" />
-              </div>
-              <div className="px-6 pb-4 border-b border-gold/10">
-                <h2 className="font-serif text-xl font-semibold text-center">Choose Theme</h2>
-                <p className="text-sm text-muted-foreground text-center mt-1">Select your preferred appearance</p>
-              </div>
-              <div className="p-4 space-y-3 pb-safe">
-                {[
-                  { id: "system" as const, label: "System Default", icon: Monitor },
-                  { id: "light" as const, label: "Cream & Gold", icon: Sun },
-                  { id: "dark" as const, label: "Black & Gold", icon: Moon },
-                ].map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = theme === option.id;
-                  return (
-                    <motion.button
-                      key={option.id}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        setTheme(option.id);
-                        setShowThemeSelector(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-4 p-4 rounded-2xl transition-all",
-                        isSelected
-                          ? "card-gold-trim shadow-lg shadow-gold/30"
-                          : "card-embossed hover:bg-muted/30"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-12 h-12 rounded-xl flex items-center justify-center",
-                        option.id === "dark"
-                          ? "bg-[#0B0B0C] border border-gold/30"
-                          : option.id === "light"
-                            ? "bg-[#F8F3E8] border border-gold/30"
-                            : "bg-gradient-to-br from-[#F8F3E8] to-[#0B0B0C] border border-gold/30"
-                      )}>
-                        <Icon className={cn(
-                          "w-6 h-6",
-                          option.id === "dark" ? "text-gold" : "text-gold-dark"
-                        )} />
-                      </div>
-                      <span className={cn(
-                        "flex-1 text-left font-medium",
-                        isSelected && "text-gold"
-                      )}>
-                        {option.label}
-                      </span>
-                      {isSelected && (
-                        <div className="w-6 h-6 rounded-full bg-gold flex items-center justify-center">
-                          <Star className="w-4 h-4 text-background fill-current" />
-                        </div>
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </motion.div>
+      )}
 
       <PremiumNavBar />
     </div>

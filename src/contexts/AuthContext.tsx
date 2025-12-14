@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { createCometChatUser } from '@/lib/cometchat';
 
 interface AuthContextType {
   user: User | null;
@@ -21,9 +22,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
+        
+        // Create CometChat user when user signs up or logs in
+        // Do this asynchronously without blocking the auth flow
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Run in background - don't await to avoid blocking
+          createCometChatUser(
+            session.user.id,
+            session.user.user_metadata?.full_name || 
+            session.user.email?.split('@')[0] || 
+            'User'
+          ).catch((error) => {
+            // Silently handle errors - CometChat is optional
+            console.warn('CometChat user creation failed (non-blocking):', error);
+          });
+        }
+        
         setLoading(false);
       }
     );

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,18 +5,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface AdminRouteProps {
+interface ExpertRouteProps {
     children: React.ReactNode;
 }
 
-const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+const ExpertRoute: React.FC<ExpertRouteProps> = ({ children }) => {
     const { user, loading: authLoading } = useAuth();
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const [roleCheckLoading, setRoleCheckLoading] = useState(true);
     const location = useLocation();
 
     useEffect(() => {
-        const checkAdminRole = async () => {
+        const checkExpertRole = async () => {
             if (!user) {
                 setRoleCheckLoading(false);
                 return;
@@ -33,9 +32,8 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
                 if (!profileError && profileData) {
                     const role = profileData.role;
-                    // Allow admin, admin_market, and master_admin
-                    if (role === 'admin' || role === 'admin_market' || role === 'master_admin') {
-                        setIsAdmin(true);
+                    if (role === 'admin' || role === 'expert' || role === 'admin_market' || role === 'master_admin') {
+                        setIsAuthorized(true);
                         setRoleCheckLoading(false);
                         return;
                     }
@@ -49,8 +47,8 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
                     if (!userRolesError && userRolesData && userRolesData.length > 0) {
                         const roles = userRolesData.map((r: any) => r.role);
-                        if (roles.includes('admin_market') || roles.includes('master_admin')) {
-                            setIsAdmin(true);
+                        if (roles.includes('expert') || roles.includes('admin_market') || roles.includes('master_admin')) {
+                            setIsAuthorized(true);
                             setRoleCheckLoading(false);
                             return;
                         }
@@ -60,17 +58,17 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
                     console.log('user_roles table not found (non-blocking)');
                 }
 
-                // Not admin
-                toast.error("Access Denied: Admins only.");
+                // Not authorized
+                toast.error("Access Denied: Experts or Admins only.");
             } catch (error) {
-                console.error('Error checking admin role:', error);
+                console.error('Error checking expert role:', error);
             } finally {
                 setRoleCheckLoading(false);
             }
         };
 
         if (!authLoading) {
-            checkAdminRole();
+            checkExpertRole();
         }
     }, [user, authLoading]);
 
@@ -79,25 +77,23 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="text-center">
                     <Loader2 className="h-10 w-10 animate-spin text-admin-gold mx-auto mb-4" />
-                    <p className="text-admin-gold/80 font-serif animate-pulse">Verifying Royal Credentials...</p>
+                    <p className="text-admin-gold/80 font-serif animate-pulse">Verifying Expert Credentials...</p>
                 </div>
             </div>
         );
     }
 
     if (!user) {
-        // Redirect to auth page, but remember we tried to go to admin
         return <Navigate to="/auth" state={{ from: location }} replace />;
     }
 
-    if (!isAdmin) {
-        // User is logged in but not admin
+    if (!isAuthorized) {
         return (
             <div className="min-h-screen bg-black flex items-center justify-center p-4">
                 <div className="text-center max-w-md bg-admin-surface border border-admin-gold/30 p-8 rounded-xl shadow-2xl">
                     <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-serif text-admin-gold mb-2">Access Denied</h2>
-                    <p className="text-gray-400 mb-6">You do not have the required permissions to access the Royal Archive (Admin Dashboard).</p>
+                    <p className="text-gray-400 mb-6">You do not have the required permissions to access the Expert Dashboard.</p>
                     <div className="flex gap-4 justify-center">
                         <button
                             onClick={() => window.location.href = '/'}
@@ -120,4 +116,4 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     return <>{children}</>;
 };
 
-export default AdminRoute;
+export default ExpertRoute;

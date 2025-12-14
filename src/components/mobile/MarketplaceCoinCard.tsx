@@ -52,40 +52,27 @@ export function MarketplaceCoinCard({
     }
   };
 
-  const isFeatured = rarity === "very-rare";
-
   return (
     <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -6, scale: 1.02 }}
+      whileHover={{ y: -4 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
-      className="card-gold-trim overflow-hidden group"
+      className="card-gold-trim overflow-hidden"
     >
       {/* Image slider */}
       <div className="relative aspect-square overflow-hidden bg-muted/50">
         <motion.img
           key={currentImageIndex}
           initial={{ opacity: 0, scale: 1.05 }}
-          animate={{ opacity: 1, scale: isHovered ? 1.1 : 1 }}
-          transition={{ duration: 0.4 }}
-          src={images[currentImageIndex] || images[0]}
+          animate={{ opacity: 1, scale: 1 }}
+          src={images[currentImageIndex]}
           alt={title}
           className="w-full h-full object-cover"
         />
 
-        {/* Premium overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
         {/* Image navigation dots */}
         {images.length > 1 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full"
-          >
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
             {images.map((_, idx) => (
               <button
                 key={idx}
@@ -94,14 +81,12 @@ export function MarketplaceCoinCard({
                   setCurrentImageIndex(idx);
                 }}
                 className={cn(
-                  "w-1.5 h-1.5 rounded-full transition-all duration-200",
-                  idx === currentImageIndex 
-                    ? "bg-gold w-4 shadow-gold-glow" 
-                    : "bg-foreground/30 hover:bg-foreground/50"
+                  "w-1.5 h-1.5 rounded-full transition-colors",
+                  idx === currentImageIndex ? "bg-gold" : "bg-foreground/30"
                 )}
               />
             ))}
-          </motion.div>
+          </div>
         )}
 
         {/* Swipe areas */}
@@ -124,25 +109,11 @@ export function MarketplaceCoinCard({
           </>
         )}
 
-        {/* Featured Badge */}
-        {isFeatured && (
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            className="absolute top-2 left-2 z-10"
-          >
-            <div className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-gold to-gold-light text-background text-[10px] font-bold uppercase tracking-wide flex items-center gap-1 shadow-lg shadow-gold/50">
-              <Star className="w-3 h-3 fill-current" />
-              Featured
-            </div>
-          </motion.div>
-        )}
-
         {/* Rarity badge */}
-        {rarity !== "common" && !isFeatured && (
+        {rarity !== "common" && (
           <div
             className={cn(
-              "absolute top-2 left-2 px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide border backdrop-blur-sm",
+              "absolute top-2 left-2 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
               rarityColors[rarity]
             )}
           >
@@ -151,38 +122,37 @@ export function MarketplaceCoinCard({
         )}
 
         {/* Wishlist button */}
-        <motion.button
-          whileTap={{ scale: 0.9 }}
+        <button
           onClick={(e) => {
             e.preventDefault();
             onWishlistToggle?.();
           }}
           className={cn(
-            "absolute top-2 right-2 w-9 h-9 rounded-full flex items-center justify-center transition-all backdrop-blur-sm",
+            "absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all",
             isWishlisted 
-              ? "bg-gold text-primary-foreground shadow-lg shadow-gold/50" 
-              : "bg-background/90 hover:bg-background border border-gold/20"
+              ? "bg-gold text-primary-foreground" 
+              : "bg-background/80 backdrop-blur-sm"
           )}
         >
-          <Heart className={cn("w-4 h-4 transition-all", isWishlisted && "fill-current scale-110")} />
-        </motion.button>
+          <Heart className={cn("w-4 h-4", isWishlisted && "fill-current")} />
+        </button>
       </div>
 
       {/* Content */}
-      <Link to={`/marketplace/coin/${id}`} className="block p-3.5 group/link">
-        <h3 className="font-serif font-semibold text-sm line-clamp-1 group-hover/link:text-gold transition-colors">{title}</h3>
+      <Link to={`/marketplace/coin/${id}`} className="block p-3">
+        <h3 className="font-serif font-semibold text-sm line-clamp-1">{title}</h3>
         
         {era && (
-          <p className="text-xs text-muted-foreground mt-1">{era}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{era}</p>
         )}
 
-        <div className="flex items-center justify-between mt-2.5">
-          <span className="font-bold text-lg gold-text">
+        <div className="flex items-center justify-between mt-2">
+          <span className="font-bold text-gold">
             ₹{price.toLocaleString()}
           </span>
           
           {metal && (
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wide px-2 py-0.5 rounded bg-muted/50">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
               {metal}
             </span>
           )}
@@ -190,9 +160,9 @@ export function MarketplaceCoinCard({
 
         {/* Seller info */}
         {seller && (
-          <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-gold/10">
+          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border/40">
             {seller.isVerified && (
-              <Shield className="w-3.5 h-3.5 text-gold" />
+              <Shield className="w-3 h-3 text-primary" />
             )}
             <span className="text-[10px] text-muted-foreground truncate">
               {seller.name}
@@ -200,7 +170,7 @@ export function MarketplaceCoinCard({
             {seller.trustScore && (
               <div className="flex items-center gap-0.5 ml-auto">
                 <Star className="w-3 h-3 text-gold fill-gold" />
-                <span className="text-[10px] text-muted-foreground font-medium">
+                <span className="text-[10px] text-muted-foreground">
                   {seller.trustScore.toFixed(1)}
                 </span>
               </div>
@@ -210,17 +180,16 @@ export function MarketplaceCoinCard({
       </Link>
 
       {/* Add to cart */}
-      <motion.button
-        whileTap={{ scale: 0.98 }}
+      <button
         onClick={(e) => {
           e.preventDefault();
           onAddToCart?.();
         }}
-        className="w-full py-3 border-t border-gold/10 flex items-center justify-center gap-2 text-sm font-medium text-gold hover:bg-gold/10 transition-all group/btn"
+        className="w-full py-2.5 border-t border-border/40 flex items-center justify-center gap-2 text-sm font-medium text-gold hover:bg-gold/10 transition-colors"
       >
-        <ShoppingCart className="w-4 h-4 transition-transform group-hover/btn:scale-110" />
-        <span>Add to Cart</span>
-      </motion.button>
+        <ShoppingCart className="w-4 h-4" />
+        Add to Cart
+      </button>
     </motion.article>
   );
 }

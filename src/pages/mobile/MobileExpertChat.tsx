@@ -1,419 +1,488 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Send, Paperclip, Check, CheckCheck, Clock, ShieldAlert, BadgeCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldAlert, BadgeCheck, Loader2, CheckCircle, Send, Image as ImageIcon, Paperclip, User, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-
-interface Message {
-    id: string;
-    content: string;
-    sender_id: string;
-    created_at: string;
-    is_read: boolean;
-}
+import { initCometChat, loginCometChat, createCometChatUser, getCometChatUser } from "@/lib/cometchat";
+import { sendTextMessage, fetchMessages, createMessageListener, ChatMessage } from "@/lib/cometchat-messages";
+import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
+import { SessionTimer } from "@/components/chat/SessionTimer";
+import { ProfileView } from "@/components/chat/ProfileView";
 
 export default function MobileExpertChat() {
     const { id: requestId } = useParams();
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [newMessage, setNewMessage] = useState("");
     const [loading, setLoading] = useState(true);
-    const [sessionStatus, setSessionStatus] = useState<"active" | "closed">("active");
-    const [threadId, setThreadId] = useState<string | null>(null);
-    const [isActive, setIsActive] = useState(true);
-    const [typingUserId, setTypingUserId] = useState<string | null>(null);
-    const [isTyping, setIsTyping] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [expert, setExpert] = useState<any>(null);
-    const [authRequest, setAuthRequest] = useState<any>(null);
+    const [expertUID, setExpertUID] = useState<string | null>(null);
+    const [sessionStatus, setSessionStatus] = useState("active");
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messageText, setMessageText] = useState("");
+    const [sending, setSending] = useState(false);
+    const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+    const [showProfile, setShowProfile] = useState(false);
+    const [requestData, setRequestData] = useState<any>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const isSettingUpRef = useRef(false);
 
     useEffect(() => {
         if (!user || !requestId) return;
-        fetchSessionDetails();
-    }, [user, requestId]);
 
-    useEffect(() => {
-        if (!threadId) return;
-        
-        // Subscribe to messages
-        const messagesChannel = supabase
-            .channel(`messages:${threadId}`)
-            .on('postgres_changes', 
-                { 
-                    event: 'INSERT', 
-                    schema: 'public', 
-                    table: 'messages',
-                    filter: `thread_id=eq.${threadId}`
-                }, 
-                (payload) => {
-                    const newMsg = payload.new as Message;
-                    setMessages(prev => {
-                        // Avoid duplicates
-                        if (prev.some(m => m.id === newMsg.id)) return prev;
-                        return [...prev, newMsg];
-                    });
+        let removeListener: (() => void) | null = null;
+        let subscriptionChannel: any = null;
+
+        const setupCometChat = async () => {
+            // Prevent multiple simultaneous setups
+            if (isSettingUpRef.current) {
+                console.log('Setup already in progress, skipping...');
+                return;
+            }
+            isSettingUpRef.current = true;
+
+            try {
+                setLoading(true);
+
+                // 1. Fetch auth request details
+                const { data: reqData, error: reqError } = await supabase
+                    .from('auth_requests')
+                    .select('status, assigned_expert_id, paid, session_started_at, created_at, description')
+                    .eq('id', requestId)
+                    .single();
+                
+                if (reqError || !reqData) {
+                    toast.error("Authentication request not found");
+                    navigate('/authenticate');
+                    isSettingUpRef.current = false;
+                    return;
                 }
-            )
-            .on('postgres_changes',
+                
+                const requestData = reqData as any;
+                setRequestData(requestData);
+
+                // 2. Check if paid and expert assigned
+                if (!requestData.paid) {
+                    toast.error("Payment required to access chat");
+                    navigate('/authenticate');
+                    isSettingUpRef.current = false;
+                    return;
+                }
+
+                if (!requestData.assigned_expert_id) {
+                    setSessionStatus("waiting");
+                    setLoading(false);
+                    isSettingUpRef.current = false;
+                    return; // Exit early, subscription will handle the rest
+                }
+
+                // 3. Check session status
+                if (requestData.status === 'completed' || requestData.status === 'rejected') {
+                    setSessionStatus("closed");
+                    setLoading(false);
+                    isSettingUpRef.current = false;
+                    return;
+                }
+
+                // If we reach here, expert is assigned and session is active
+                setSessionStatus("active");
+
+                // 4. Fetch Expert Details
+                const { data: expertProfile, error: expertError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', (requestData as any).assigned_expert_id)
+                    .maybeSingle();
+
+                if (expertError) {
+                    console.warn("Error fetching expert profile (non-blocking):", expertError);
+                }
+
+                if (expertProfile) {
+                    setExpert(expertProfile);
+                    setExpertUID(requestData.assigned_expert_id);
+                } else {
+                    setExpertUID(requestData.assigned_expert_id);
+                }
+
+                // 5. Initialize CometChat SDK
+                await initCometChat();
+
+                // 6. Ensure current user exists in CometChat
+                const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+                await createCometChatUser(user.id, userName);
+
+                // 7. Ensure expert exists in CometChat
+                if (expertProfile) {
+                    const expertName = expertProfile.display_name || expertProfile.username || 'Expert';
+                    await createCometChatUser(requestData.assigned_expert_id, expertName);
+                }
+
+                // 8. Login current user to CometChat
+                await loginCometChat(user.id);
+
+                // 9. Set session start time
+                const startTime = requestData.session_started_at 
+                    ? new Date(requestData.session_started_at) 
+                    : new Date(requestData.created_at);
+                setSessionStartTime(startTime);
+
+                // 10. Send queries automatically if they exist and no messages yet
+                if (requestData.description && requestData.description.trim()) {
+                    try {
+                        const previousMessages = await fetchMessages(requestData.assigned_expert_id, 1);
+                        // Only send if no messages exist yet
+                        if (previousMessages.length === 0) {
+                            await sendTextMessage(requestData.assigned_expert_id, requestData.description);
+                        }
+                    } catch (error) {
+                        console.error('Error sending queries:', error);
+                    }
+                }
+
+                // 11. Fetch previous messages
+                if (requestData.assigned_expert_id) {
+                    const previousMessages = await fetchMessages(requestData.assigned_expert_id, 50);
+                    setMessages(previousMessages.reverse()); // Reverse to show oldest first
+                }
+
+                // 12. Set up message listener
+                if (requestData.assigned_expert_id) {
+                    removeListener = createMessageListener(
+                        `chat-${requestId}`,
+                        (message) => {
+                            setMessages((prev) => [...prev, message]);
+                        }
+                    );
+                }
+
+            } catch (error: any) {
+                console.error("CometChat setup error:", error);
+                toast.error(error.message || "Failed to initialize chat");
+            } finally {
+                setLoading(false);
+                isSettingUpRef.current = false;
+            }
+        };
+
+        // Set up real-time subscription to detect when expert accepts (always active)
+        subscriptionChannel = supabase
+            .channel(`auth_request_${requestId}_user`)
+            .on(
+                'postgres_changes',
                 {
                     event: 'UPDATE',
                     schema: 'public',
-                    table: 'threads',
-                    filter: `id=eq.${threadId}`
+                    table: 'auth_requests',
+                    filter: `id=eq.${requestId}`
                 },
-                (payload) => {
-                    const updated = payload.new as any;
-                    setIsActive(updated.is_active || false);
-                    setSessionStatus(updated.is_active ? "active" : "closed");
-                    setTypingUserId(updated.typing_user_id);
-                }
-            )
-            .subscribe();
-
-        // Subscribe to typing indicators
-        const typingChannel = supabase
-            .channel(`typing:${threadId}`)
-            .on('postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'threads',
-                    filter: `id=eq.${threadId}`
-                },
-                (payload) => {
-                    const updated = payload.new as any;
-                    if (updated.typing_user_id && updated.typing_user_id !== user?.id) {
-                        setTypingUserId(updated.typing_user_id);
-                        // Clear typing indicator after 3 seconds
-                        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                        typingTimeoutRef.current = setTimeout(() => {
-                            setTypingUserId(null);
-                        }, 3000);
-                    } else {
-                        setTypingUserId(null);
+                async (payload) => {
+                    console.log('Request updated:', payload);
+                    const updatedRequest = payload.new as any;
+                    const oldRequest = payload.old as any;
+                    
+                    // Check if expert was just assigned (was null, now has value)
+                    if (updatedRequest.assigned_expert_id && !oldRequest?.assigned_expert_id) {
+                        toast.success("Expert accepted your request! Setting up chat...");
+                        // Re-run setup to initialize chat
+                        await setupCometChat();
                     }
                 }
             )
             .subscribe();
 
+        // Initial setup
+        setupCometChat();
+
+        // Cleanup listener and subscription on unmount
         return () => {
-            supabase.removeChannel(messagesChannel);
-            supabase.removeChannel(typingChannel);
-            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+            if (removeListener) {
+                removeListener();
+            }
+            if (subscriptionChannel) {
+                supabase.removeChannel(subscriptionChannel);
+            }
         };
-    }, [threadId, user]);
+    }, [user, requestId, navigate]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, typingUserId]);
+    }, [messages]);
 
-    const fetchSessionDetails = async () => {
+    const handleSend = async () => {
+        if (!messageText.trim() || !expertUID || sending) return;
+
+        setSending(true);
+        try {
+            const sentMessage = await sendTextMessage(expertUID, messageText.trim());
+            setMessages((prev) => [...prev, sentMessage]);
+            setMessageText("");
+            inputRef.current?.focus();
+        } catch (error: any) {
+            console.error("Error sending message:", error);
+            toast.error("Failed to send message. Please try again.");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+        }
+    };
+
+    const handleEndSession = async () => {
+        if (!requestId || !user) return;
+        
+        if (!confirm("Are you sure you want to end this session? This action cannot be undone.")) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('auth_requests')
+                .update({ status: 'completed' })
+                .eq('id', requestId);
+
+            if (error) throw error;
+
+            toast.success("Session ended successfully");
+            setSessionStatus("closed");
+        } catch (error: any) {
+            console.error("Error ending session:", error);
+            toast.error("Failed to end session. Please try again.");
+        }
+    };
+
+    const handleSessionExpire = async () => {
         if (!requestId) return;
         
-        setLoading(true);
         try {
-            // 1. Get Auth Request
-            const { data: reqData, error: reqError } = await supabase
-                .from('auth_requests')
-                .select('*, assigned_expert_id')
-                .eq('id', requestId)
-                .single();
-
-            if (reqError || !reqData) {
-                toast.error("Authentication request not found");
-                navigate('/authenticate');
-                return;
-            }
-
-            setAuthRequest(reqData);
-
-            // Check if user owns this request
-            if (reqData.user_id !== user?.id) {
-                toast.error("Access denied");
-                navigate('/authenticate');
-                return;
-            }
-
-            // 2. Get Thread ID linked to this Auth Request
-            const { data: threadData, error: threadError } = await supabase
-                .from('threads')
-                .select('*')
-                .eq('auth_request_id', requestId)
-                .single();
-
-            if (threadError || !threadData) {
-                // Thread not created yet - wait for expert assignment
-                setLoading(false);
-                return;
-            }
-
-            setThreadId(threadData.id);
-            setIsActive(threadData.is_active || false);
-            setSessionStatus(threadData.is_active ? "active" : "closed");
-
-            // 3. Fetch Messages
-            const { data: msgs, error: msgsError } = await supabase
-                .from('messages')
-                .select('*')
-                .eq('thread_id', threadData.id)
-                .order('created_at', { ascending: true });
-
-            if (msgs) setMessages(msgs);
-
-            // 4. Fetch Expert Details if assigned
-            if (reqData.assigned_expert_id) {
-                const { data: expertProfile } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', reqData.assigned_expert_id)
-                    .single();
-                setExpert(expertProfile);
-            }
-        } catch (error: any) {
-            console.error('Error fetching session:', error);
-            toast.error("Failed to load chat session");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleTyping = async () => {
-        if (!threadId || !isActive) return;
-        
-        if (!isTyping) {
-            setIsTyping(true);
-            await supabase.rpc('set_typing_indicator', {
-                thread_id_param: threadId,
-                is_typing: true
-            });
-        }
-
-        // Clear existing timeout
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        
-        // Set timeout to stop typing indicator
-        typingTimeoutRef.current = setTimeout(async () => {
-            setIsTyping(false);
-            await supabase.rpc('set_typing_indicator', {
-                thread_id_param: threadId,
-                is_typing: false
-            });
-        }, 2000);
-    };
-
-    const sendMessage = async () => {
-        if (!newMessage.trim() || !threadId || !isActive) return;
-        
-        const tempMsg = newMessage;
-        setNewMessage("");
-
-        // Stop typing indicator
-        if (isTyping) {
-            setIsTyping(false);
-            await supabase.rpc('set_typing_indicator', {
-                thread_id_param: threadId,
-                is_typing: false
-            });
-        }
-
-        const { error } = await supabase.from('messages').insert({
-            thread_id: threadId,
-            sender_id: user?.id,
-            content: tempMsg
-        });
-
-        if (error) {
-            console.error('Error sending message:', error);
-            toast.error("Failed to send message");
-            setNewMessage(tempMsg); // Revert
-        } else {
-            // Update thread last_message_at
             await supabase
-                .from('threads')
-                .update({ last_message_at: new Date().toISOString() })
-                .eq('id', threadId);
+                .from('auth_requests')
+                .update({ status: 'completed' })
+                .eq('id', requestId);
+            
+            toast.info("Session expired. The chat has been closed.");
+            setSessionStatus("closed");
+        } catch (error) {
+            console.error("Error updating expired session:", error);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex flex-col h-screen bg-background items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-gold mb-4" />
+                <p className="text-muted-foreground">Initializing chat...</p>
+            </div>
+        );
+    }
+
+    if (sessionStatus === "closed") {
+        return (
+            <div className="flex flex-col h-screen bg-background items-center justify-center p-4">
+                <ShieldAlert className="w-16 h-16 text-red-500 mb-4" />
+                <h2 className="text-xl font-bold mb-2">Session Closed</h2>
+                <p className="text-muted-foreground text-center mb-6">
+                    This authentication session has been completed or closed by the expert.
+                </p>
+                <button
+                    onClick={() => navigate('/authenticate')}
+                    className="px-6 py-3 bg-gold text-black rounded-xl font-medium hover:bg-gold-light transition-colors"
+                >
+                    Start New Authentication
+                </button>
+            </div>
+        );
+    }
+
+    if (sessionStatus === "waiting") {
+        return (
+            <div className="flex flex-col h-screen bg-background items-center justify-center p-4">
+                <div className="text-center max-w-md">
+                    <Loader2 className="w-12 h-12 animate-spin text-gold mx-auto mb-4" />
+                    <h2 className="text-xl font-bold mb-2">Waiting for Expert</h2>
+                    <p className="text-muted-foreground text-center mb-6">
+                        Your request is pending. An expert will accept it soon and you'll be automatically connected to chat.
+                    </p>
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Listening for updates...</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (!expertUID) {
+        return (
+            <div className="flex flex-col h-screen bg-background items-center justify-center p-4">
+                <div className="text-center max-w-md">
+                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                    <h2 className="text-xl font-bold mb-2">Request Accepted!</h2>
+                    <p className="text-muted-foreground text-center mb-6">
+                        An expert has accepted your request. Setting up chat...
+                    </p>
+                    <Loader2 className="w-8 h-8 animate-spin text-gold mx-auto" />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-screen bg-background relative overflow-hidden">
-            {/* Background Gradients */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-gold/5 via-background to-background pointer-events-none" />
-
-            {/* Header */}
-            <header className="flex items-center gap-3 p-4 border-b border-gold/10 bg-card/80 backdrop-blur-xl sticky top-0 z-20 shadow-sm">
-                <button onClick={() => navigate('/authenticate')} className="p-2 -ml-2 hover:bg-gold/10 rounded-full transition-colors text-gold">
+            {/* Custom Header */}
+            <header className="flex items-center gap-3 p-4 border-b border-gold/20 bg-card/95 backdrop-blur-xl sticky top-0 z-50 shadow-lg safe-area-inset-top">
+                <button 
+                    onClick={() => navigate('/authenticate')} 
+                    className="p-2 -ml-2 hover:bg-gold/10 rounded-full transition-colors text-gold"
+                >
                     <ArrowLeft className="w-5 h-5" />
                 </button>
-                <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                        <h2 className="font-serif font-bold text-lg tracking-wide bg-gradient-to-r from-gold to-yellow-600 bg-clip-text text-transparent">
-                            {expert ? expert.display_name : "Dr. Anand Kumar"}
-                        </h2>
-                        {expert && <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/20" />}
+                <button
+                    onClick={() => setShowProfile(true)}
+                    className="flex-1 min-w-0 flex items-center gap-3"
+                >
+                    <div className="w-10 h-10 rounded-full border-2 border-gold/30 p-0.5 flex-shrink-0">
+                        <img 
+                            src={expert?.avatar_url || "https://i.pravatar.cc/150?img=12"} 
+                            className="w-full h-full rounded-full object-cover" 
+                            alt="Expert"
+                        />
                     </div>
-                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 font-medium">
-                        {sessionStatus === 'active' ? (
-                            <><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> Live Secure Channel</>
-                        ) : (
-                            <><ShieldAlert className="w-3 h-3 text-red-500" /> Session Closed</>
-                        )}
-                    </p>
-                </div>
-                {/* Expert Avatar */}
-                <div className="w-10 h-10 rounded-full border-2 border-gold/30 p-0.5 pointer-events-none">
-                    <img src={expert?.avatar_url || "https://i.pravatar.cc/150?img=12"} className="w-full h-full rounded-full object-cover" />
-                </div>
+                    <div className="flex-1 min-w-0 text-left">
+                        <div className="flex items-center gap-2">
+                            <h2 className="font-serif font-bold text-lg tracking-wide bg-gradient-to-r from-gold to-yellow-600 bg-clip-text text-transparent truncate">
+                                {expert?.display_name || "Expert"}
+                            </h2>
+                            {expert && <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/20 flex-shrink-0" />}
+                        </div>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 font-medium">
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> Live Secure Channel
+                        </p>
+                    </div>
+                </button>
+                {sessionStartTime && (
+                    <SessionTimer
+                        startTime={sessionStartTime}
+                        duration={5 * 60 * 1000} // 5 minutes
+                        onExpire={handleSessionExpire}
+                    />
+                )}
             </header>
 
-            {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {loading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-8 h-8 animate-spin text-gold" />
-                    </div>
-                ) : !threadId ? (
-                    <div className="text-center py-10 text-muted-foreground">
-                        <Clock className="w-12 h-12 mx-auto mb-3 text-gold/50" />
-                        <p className="font-medium">Waiting for expert assignment...</p>
-                        <p className="text-sm mt-2 opacity-70">Your request is being reviewed. An expert will be assigned soon.</p>
-                    </div>
-                ) : messages.length === 0 ? (
-                    <div className="text-center py-10 text-muted-foreground opacity-50">
-                        <Clock className="w-12 h-12 mx-auto mb-3" />
-                        <p>Start the conversation...</p>
-                    </div>
-                ) : (
-                    <>
-                        {messages.map((msg, index) => {
-                    const isMe = msg.sender_id === user?.id;
-                    return (
-                        <motion.div
-                            key={msg.id}
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            transition={{ delay: index * 0.05 }}
-                            className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
-                        >
-                            <div className={cn(
-                                "max-w-[80%] rounded-2xl px-4 py-3 text-sm transition-all duration-200",
-                                isMe 
-                                    ? 'message-tile-user rounded-tr-sm' 
-                                    : 'message-tile-expert rounded-tl-sm'
-                            )}>
-                                <p className="leading-relaxed">{msg.content}</p>
-                                <div className={cn(
-                                    "text-[10px] mt-2 flex items-center gap-1 opacity-70",
-                                    isMe ? 'justify-end' : 'justify-start'
-                                )}>
-                                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                    {isMe && (
-                                        <span className={cn(
-                                            "ml-1",
-                                            msg.is_read ? "text-gold" : "text-muted-foreground"
-                                        )}>
-                                            {msg.is_read ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        </motion.div>
-                        );
-                    })}
-                    
-                    {/* Typing Indicator */}
-                    <AnimatePresence>
-                        {typingUserId && typingUserId !== user?.id && (
+            {/* Messages Container */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gradient-to-b from-background via-background to-card/30">
+                <AnimatePresence mode="popLayout">
+                    {messages.map((msg) => {
+                        const isMe = msg.senderId === user?.id;
+                        const messageDate = new Date(msg.sentAt);
+                        const timeString = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                        return (
                             <motion.div
+                                key={msg.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0 }}
-                                className="flex justify-start"
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                className={cn(
+                                    "flex gap-2 max-w-[85%]",
+                                    isMe ? "ml-auto flex-row-reverse" : "mr-auto"
+                                )}
                             >
-                                <div className="message-tile-expert rounded-tl-sm px-4 py-3">
-                                    <div className="flex gap-1">
-                                        <div className="w-2 h-2 bg-gold rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                        <div className="w-2 h-2 bg-gold rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                        <div className="w-2 h-2 bg-gold rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                    </div>
+                                {!isMe && (
+                                    <img
+                                        src={expert?.avatar_url || "https://i.pravatar.cc/150?img=12"}
+                                        alt="Expert"
+                                        className="w-8 h-8 rounded-full object-cover flex-shrink-0 border-2 border-gold/20"
+                                    />
+                                )}
+
+                                <div
+                                    className={cn(
+                                        "rounded-2xl px-4 py-3 border shadow-sm",
+                                        isMe
+                                            ? "bg-gradient-to-br from-gold to-gold-light text-foreground border-gold/30 rounded-br-md"
+                                            : "bg-card border-border/40 rounded-bl-md"
+                                    )}
+                                >
+                                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                                        {msg.text}
+                                    </p>
+                                    <p
+                                        className={cn(
+                                            "text-[10px] mt-2 flex items-center gap-1",
+                                            isMe ? "text-foreground/70 justify-end" : "text-muted-foreground"
+                                        )}
+                                    >
+                                        {timeString}
+                                        {isMe && msg.readAt && <CheckCircle className="w-3 h-3" />}
+                                    </p>
                                 </div>
                             </motion.div>
-                        )}
-                    </AnimatePresence>
-                    </>
-                )}
+                        );
+                    })}
+                </AnimatePresence>
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 bg-card/90 backdrop-blur-xl border-t border-gold/20 z-20 pb-8 shadow-lg shadow-background/50">
-                {sessionStatus === 'active' ? (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex gap-3 items-end"
-                    >
-                        <motion.div whileTap={{ scale: 0.9 }}>
-                            <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-gold hover:bg-gold/10 rounded-full h-12 w-12 shrink-0 transition-all">
-                                <Paperclip className="w-5 h-5" />
-                            </Button>
-                        </motion.div>
-                        <div className="flex-1 relative">
-                            <Input
-                                value={newMessage}
-                                onChange={(e) => {
-                                    setNewMessage(e.target.value);
-                                    handleTyping();
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        sendMessage();
-                                    }
-                                }}
-                                placeholder="Type your message..."
-                                disabled={!isActive}
-                                className="bg-background/60 border-gold/30 focus:border-gold/60 focus:ring-2 focus:ring-gold/20 rounded-2xl h-12 pl-4 pr-4 transition-all placeholder:text-muted-foreground disabled:opacity-50"
-                            />
-                        </div>
-                        <motion.div whileTap={{ scale: 0.9 }}>
-                            <Button
-                                onClick={sendMessage}
-                                size="icon"
-                                className="bg-gold text-primary-foreground hover:bg-gold-light rounded-2xl h-12 w-12 shadow-lg shadow-gold/50 shrink-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={!newMessage.trim() || !isActive}
-                            >
-                                <Send className="w-5 h-5 ml-0.5" />
-                            </Button>
-                        </motion.div>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="p-5 bg-muted/40 rounded-xl border-2 border-gold/20 text-center"
-                    >
-                        <ShieldAlert className="w-12 h-12 mx-auto mb-3 text-gold/50" />
-                        <p className="text-sm font-medium mb-2">Session Ended</p>
-                        <p className="text-xs text-muted-foreground mb-4">This session has been closed. Start a new authentication to continue.</p>
-                        <Button 
-                            onClick={() => navigate('/authenticate')} 
-                            variant="outline" 
-                            className="w-full border-gold/40 text-gold hover:bg-gold/10 transition-all"
+            {/* Message Input */}
+            <footer className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border/40 p-3 pb-safe">
+                <div className="flex items-end gap-2 mb-2">
+                    <button className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-full transition-colors">
+                        <Paperclip className="w-5 h-5" />
+                    </button>
+                    <div className="flex-1 relative">
+                        <Input
+                            ref={inputRef}
+                            value={messageText}
+                            onChange={(e) => setMessageText(e.target.value)}
+                            onKeyPress={handleKeyPress}
+                            placeholder="Type your message..."
+                            className="pr-12 bg-card border-border/60 rounded-full h-12 focus:border-gold focus:ring-gold/20"
+                            disabled={sending}
+                        />
+                        <button
+                            onClick={handleSend}
+                            disabled={!messageText.trim() || sending}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gold text-black hover:bg-gold-light disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
-                            Start New Authentication
-                        </Button>
-                    </motion.div>
-                )}
-            </div>
+                            {sending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Send className="w-4 h-4" />
+                            )}
+                        </button>
+                    </div>
+                </div>
+                <Button
+                    onClick={handleEndSession}
+                    variant="outline"
+                    className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                >
+                    <X className="w-4 h-4 mr-2" />
+                    End Session
+                </Button>
+            </footer>
+
+            {/* Profile View Modal */}
+            {expert && (
+                <ProfileView
+                    profile={expert}
+                    isOpen={showProfile}
+                    onClose={() => setShowProfile(false)}
+                />
+            )}
+
+            <PremiumNavBar />
         </div>
     );
 }
