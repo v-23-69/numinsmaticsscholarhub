@@ -71,7 +71,7 @@ const AdminLayout = () => {
                                     isActive ? "text-admin-gold -translate-y-1" : "text-gray-500 hover:text-gray-300"
                                 )}
                             >
-                                <item.icon className={cn("w-6 h-6", isActive && "drop-shadow-[0_0_8px_rgba(212,175,55,0.5)]")} />
+                                <item.icon className={cn("w-6 h-6", isActive && "drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]")} />
                                 <span className="text-[10px] font-medium">{item.label}</span>
                             </button>
                         )

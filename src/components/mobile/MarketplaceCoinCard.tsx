@@ -87,7 +87,7 @@ export function MarketplaceCoinCard({
                 className={cn(
                   "w-1.5 h-1.5 rounded-full transition-all",
                   idx === currentImageIndex 
-                    ? "bg-gold w-6 shadow-[0_0_8px_rgba(212,175,55,0.6)]" 
+                    ? "bg-gold w-6 shadow-[0_0_8px_rgba(96,165,250,0.6)]" 
                     : "bg-white/40 hover:bg-white/60"
                 )}
               />

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -26,7 +27,98 @@ const MobileAuth: React.FC = () => {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      // Check if profile is complete
+      const checkProfile = async () => {
+        try {
+          let profileData: any = null;
+          let hasPhoneColumn = true;
+
+          // Try with user_id first (don't select user_id in SELECT to avoid conflicts)
+          try {
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('display_name, phone, location, id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (!error && profile) {
+              profileData = profile;
+            } else if (error && (error.code === '400' || error.message?.includes('Bad Request'))) {
+              // 400 error - try with id field instead
+              console.log('Query with user_id returned 400, trying with id field');
+            } else if (error && error.code !== 'PGRST116') {
+              // Other error, try with id field
+              console.warn('Profile query error:', error.code);
+            }
+          } catch (err: any) {
+            console.log('Exception in user_id query:', err.message);
+          }
+
+          // If still no data, try with id field
+          if (!profileData) {
+            try {
+              const { data, error } = await supabase
+                .from('profiles')
+                .select('display_name, phone, location, id')
+                .eq('id', user.id)
+                .maybeSingle();
+              
+              if (!error && data) {
+                profileData = data;
+              }
+            } catch (err: any) {
+              console.warn('Query with id also failed:', err.message);
+            }
+          }
+          
+          // Final fallback: try selecting all columns
+          if (!profileData) {
+            try {
+              const { data } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              
+              if (!data) {
+                const { data: dataById } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', user.id)
+                  .maybeSingle();
+                profileData = dataById || data;
+              } else {
+                profileData = data;
+              }
+            } catch (err: any) {
+              console.warn('Fallback query failed:', err.message);
+            }
+          }
+
+          // Check if profile is complete - only require display_name
+          const isComplete = profileData && 
+            profileData.display_name && 
+            profileData.display_name.trim() !== '';
+
+          // Cache the result - always update cache
+          if (typeof window !== 'undefined' && user?.id) {
+            sessionStorage.setItem(`profile_complete_${user.id}`, String(isComplete));
+            console.log('Profile check result cached:', isComplete, 'for user:', user.id);
+          }
+
+          if (!isComplete) {
+            console.log('Profile incomplete, redirecting to setup');
+            navigate('/profile/setup');
+          } else {
+            console.log('Profile complete, navigating to home');
+            navigate('/');
+          }
+        } catch (error) {
+          console.error('Error checking profile:', error);
+          navigate('/profile/setup');
+        }
+      };
+      checkProfile();
     }
   }, [user, navigate]);
 
@@ -103,7 +195,10 @@ const MobileAuth: React.FC = () => {
             title: 'Account created!',
             description: 'Welcome to NSH. Let\'s set up your profile.',
           });
-          navigate('/profile/setup');
+          // Small delay to ensure user is created
+          setTimeout(() => {
+            navigate('/profile/setup');
+          }, 500);
         }
       }
     } finally {

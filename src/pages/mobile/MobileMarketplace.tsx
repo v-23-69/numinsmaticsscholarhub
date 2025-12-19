@@ -140,13 +140,21 @@ export default function MobileMarketplace() {
   const handleAddToCart = (listing: any) => {
     const mainImage = listing.coin_images?.[0]?.url || "";
 
+    // If it's a Shopify product, use Shopify IDs; otherwise use listing IDs
+    const productId = listing.is_shopify_product && listing.shopify_product_id 
+      ? listing.shopify_product_id 
+      : listing.id;
+    const variantId = listing.is_shopify_product && listing.shopify_variant_id
+      ? listing.shopify_variant_id
+      : listing.id;
+
     addItem({
       product: {
         node: {
-          id: listing.id,
+          id: productId,
           title: listing.title,
           description: listing.description || "",
-          handle: listing.id,
+          handle: listing.shopify_handle || listing.id,
           priceRange: {
             minVariantPrice: {
               amount: listing.price.toString(),
@@ -162,7 +170,7 @@ export default function MobileMarketplace() {
           options: [],
         },
       },
-      variantId: `gid://shopify/ProductVariant/${listing.id}`,
+      variantId: variantId,
       variantTitle: "Default",
       price: { amount: listing.price.toString(), currencyCode: listing.currency || "INR" },
       quantity: 1,
@@ -228,7 +236,7 @@ export default function MobileMarketplace() {
             className={cn(
               "flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all shadow-lg",
               showCategories 
-                ? "bg-gradient-to-r from-gold via-gold-light to-gold text-black shadow-[0_8px_32px_rgba(212,175,55,0.4)]" 
+                ? "bg-gradient-to-r from-gold via-gold-light to-gold text-black shadow-[0_8px_32px_rgba(96,165,250,0.4)]" 
                 : "bg-gradient-to-br from-blue/20 via-blue/15 to-blue/20 border border-gold/30 text-foreground hover:border-gold/50"
             )}
           >
@@ -279,7 +287,7 @@ export default function MobileMarketplace() {
         <motion.button
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowFilters(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 border-2 border-gold/30 text-gold text-sm font-semibold hover:border-gold/50 hover:shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 border-2 border-gold/30 text-gold text-sm font-semibold hover:border-gold/50 hover:shadow-[0_0_20px_rgba(96,165,250,0.2)] transition-all"
         >
           <SlidersHorizontal className="w-4 h-4" />
           Filters
@@ -421,7 +429,7 @@ export default function MobileMarketplace() {
                           setActiveCategory(cat.slug || cat.id);
                           setShowSearch(false);
                         }}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 border border-gold/30 text-gold text-sm font-medium hover:border-gold/50 hover:shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-all"
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-gold/20 via-gold/15 to-gold/20 border border-gold/30 text-gold text-sm font-medium hover:border-gold/50 hover:shadow-[0_0_15px_rgba(96,165,250,0.2)] transition-all"
                       >
                         {cat.title || cat.name}
                       </motion.button>

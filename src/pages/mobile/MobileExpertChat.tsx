@@ -13,6 +13,7 @@ import { sendTextMessage, fetchMessages, createMessageListener, ChatMessage } fr
 import { PremiumNavBar } from "@/components/mobile/PremiumNavBar";
 import { SessionTimer } from "@/components/chat/SessionTimer";
 import { ProfileView } from "@/components/chat/ProfileView";
+import { generateAndSaveSessionDocument } from "@/utils/documentGenerator";
 
 export default function MobileExpertChat() {
     const { id: requestId } = useParams();
@@ -81,30 +82,43 @@ export default function MobileExpertChat() {
                     return; // Exit early, subscription will handle the rest
                 }
 
-                // 3. Check session status
-                if (requestData.status === 'completed' || requestData.status === 'rejected') {
+                // 3. Check session status - allow viewing completed sessions
+                if (requestData.status === 'rejected') {
                     setSessionStatus("closed");
                     setLoading(false);
                     isSettingUpRef.current = false;
                     return;
                 }
-
-                // If we reach here, expert is assigned and session is active
-                setSessionStatus("active");
+                
+                // Set session status - completed sessions can still be viewed
+                if (requestData.status === 'completed') {
+                    setSessionStatus("completed"); // Use different status for completed (read-only)
+                } else {
+                    // If we reach here, expert is assigned and session is active
+                    setSessionStatus("active");
+                }
 
                 // 4. Fetch Expert Details
                 const { data: expertProfile, error: expertError } = await supabase
                     .from('profiles')
-                    .select('*')
+                    .select('*, user_id, id')
                     .eq('id', (requestData as any).assigned_expert_id)
                     .maybeSingle();
 
-                if (expertError) {
+                // Also try with user_id if id doesn't work
+                const expertData = expertProfile || await supabase
+                    .from('profiles')
+                    .select('*, user_id, id')
+                    .eq('user_id', (requestData as any).assigned_expert_id)
+                    .maybeSingle()
+                    .then(({ data }) => data);
+
+                if (expertError && !expertData) {
                     console.warn("Error fetching expert profile (non-blocking):", expertError);
                 }
 
-                if (expertProfile) {
-                    setExpert(expertProfile);
+                if (expertData) {
+                    setExpert(expertData);
                     setExpertUID(requestData.assigned_expert_id);
                 } else {
                     setExpertUID(requestData.assigned_expert_id);
@@ -132,8 +146,8 @@ export default function MobileExpertChat() {
                     : new Date(requestData.created_at);
                 setSessionStartTime(startTime);
 
-                // 10. Send queries automatically if they exist and no messages yet
-                if (requestData.description && requestData.description.trim()) {
+                // 10. Send queries automatically if they exist and no messages yet (only for active sessions)
+                if (requestData.status !== 'completed' && requestData.description && requestData.description.trim()) {
                     try {
                         const previousMessages = await fetchMessages(requestData.assigned_expert_id, 1);
                         // Only send if no messages exist yet
@@ -145,14 +159,25 @@ export default function MobileExpertChat() {
                     }
                 }
 
-                // 11. Fetch previous messages
+                // 11. Fetch previous messages - only from this session
                 if (requestData.assigned_expert_id) {
-                    const previousMessages = await fetchMessages(requestData.assigned_expert_id, 50);
-                    setMessages(previousMessages.reverse()); // Reverse to show oldest first
+                    const allMessages = await fetchMessages(requestData.assigned_expert_id, 100);
+                    // Filter messages to only include those from this session (after session_started_at or created_at)
+                    const sessionStartTime = requestData.session_started_at 
+                        ? new Date(requestData.session_started_at).getTime()
+                        : new Date(requestData.created_at).getTime();
+                    
+                    // Only show messages from this session (messages sent after session started)
+                    // For completed sessions, show all messages from the session
+                    const sessionMessages = allMessages.filter(msg => {
+                        return msg.sentAt >= sessionStartTime - 60000; // 1 minute buffer
+                    });
+                    
+                    setMessages(sessionMessages.reverse()); // Reverse to show oldest first
                 }
 
-                // 12. Set up message listener
-                if (requestData.assigned_expert_id) {
+                // 12. Set up message listener (only for active sessions)
+                if (requestData.assigned_expert_id && requestData.status !== 'completed') {
                     removeListener = createMessageListener(
                         `chat-${requestId}`,
                         (message) => {
@@ -239,13 +264,38 @@ export default function MobileExpertChat() {
     };
 
     const handleEndSession = async () => {
-        if (!requestId || !user) return;
+        if (!requestId || !user || !expertUID) return;
         
-        if (!confirm("Are you sure you want to end this session? This action cannot be undone.")) {
+        if (!confirm("Are you sure you want to end this session? A document will be generated with all Q&A.")) {
             return;
         }
 
         try {
+            // Generate and save session document before ending
+            const expertName = expert?.display_name || expert?.username || 'Expert';
+            const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+            
+            toast.info("Generating session document...");
+            
+            // Format messages for document generation
+            const formattedMessages: ChatMessage[] = messages.map(msg => ({
+                id: msg.id,
+                text: msg.text,
+                senderId: msg.senderId,
+                sentAt: msg.sentAt,
+                senderName: msg.senderId === user.id ? userName : expertName,
+            }));
+
+            await generateAndSaveSessionDocument(
+                requestId,
+                user.id,
+                expertUID,
+                formattedMessages,
+                expertName,
+                userName
+            );
+
+            // Update session status
             const { error } = await supabase
                 .from('auth_requests')
                 .update({ status: 'completed' })
@@ -253,7 +303,7 @@ export default function MobileExpertChat() {
 
             if (error) throw error;
 
-            toast.success("Session ended successfully");
+            toast.success("Session ended successfully. Document saved!");
             setSessionStatus("closed");
         } catch (error: any) {
             console.error("Error ending session:", error);
@@ -262,15 +312,36 @@ export default function MobileExpertChat() {
     };
 
     const handleSessionExpire = async () => {
-        if (!requestId) return;
+        if (!requestId || !user || !expertUID) return;
         
         try {
+            // Generate document before expiring
+            const expertName = expert?.display_name || expert?.username || 'Expert';
+            const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+            
+            const formattedMessages: ChatMessage[] = messages.map(msg => ({
+                id: msg.id,
+                text: msg.text,
+                senderId: msg.senderId,
+                sentAt: msg.sentAt,
+                senderName: msg.senderId === user.id ? userName : expertName,
+            }));
+
+            await generateAndSaveSessionDocument(
+                requestId,
+                user.id,
+                expertUID,
+                formattedMessages,
+                expertName,
+                userName
+            );
+
             await supabase
                 .from('auth_requests')
                 .update({ status: 'completed' })
                 .eq('id', requestId);
             
-            toast.info("Session expired. The chat has been closed.");
+            toast.info("Session expired. Document saved!");
             setSessionStatus("closed");
         } catch (error) {
             console.error("Error updating expired session:", error);
@@ -342,7 +413,14 @@ export default function MobileExpertChat() {
             {/* Custom Header */}
             <header className="flex items-center gap-3 p-4 border-b border-gold/20 bg-card/95 backdrop-blur-xl sticky top-0 z-50 shadow-lg safe-area-inset-top">
                 <button 
-                    onClick={() => navigate('/authenticate')} 
+                    onClick={() => {
+                        // If viewing completed session, go back to profile, otherwise go to authenticate
+                        if (sessionStatus === "completed") {
+                            navigate('/profile');
+                        } else {
+                            navigate('/authenticate');
+                        }
+                    }} 
                     className="p-2 -ml-2 hover:bg-gold/10 rounded-full transition-colors text-gold"
                 >
                     <ArrowLeft className="w-5 h-5" />
@@ -366,7 +444,12 @@ export default function MobileExpertChat() {
                             {expert && <BadgeCheck className="w-4 h-4 text-blue-500 fill-blue-500/20 flex-shrink-0" />}
                         </div>
                         <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 font-medium">
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" /> Live Secure Channel
+                            {sessionStatus === "completed" ? (
+                                <span className="w-1.5 h-1.5 bg-gray-500 rounded-full shadow-[0_0_8px_rgba(107,114,128,0.5)]" />
+                            ) : (
+                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                            )}
+                            {sessionStatus === "completed" ? "Completed Session" : "Live Secure Channel"}
                         </p>
                     </div>
                 </button>
@@ -434,44 +517,64 @@ export default function MobileExpertChat() {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
-            <footer className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border/40 p-3 pb-safe">
-                <div className="flex items-end gap-2 mb-2">
-                    <button className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-full transition-colors">
-                        <Paperclip className="w-5 h-5" />
-                    </button>
-                    <div className="flex-1 relative">
-                        <Input
-                            ref={inputRef}
-                            value={messageText}
-                            onChange={(e) => setMessageText(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Type your message..."
-                            className="pr-12 bg-card border-border/60 rounded-full h-12 focus:border-gold focus:ring-gold/20"
-                            disabled={sending}
-                        />
-                        <button
-                            onClick={handleSend}
-                            disabled={!messageText.trim() || sending}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gold text-black hover:bg-gold-light disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        >
-                            {sending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                                <Send className="w-4 h-4" />
-                            )}
+            {/* Message Input - Hide for completed sessions */}
+            {sessionStatus !== "completed" && (
+                <footer className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border/40 p-3 pb-safe">
+                    <div className="flex items-end gap-2 mb-2">
+                        <button className="p-2.5 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-full transition-colors">
+                            <Paperclip className="w-5 h-5" />
                         </button>
+                        <div className="flex-1 relative">
+                            <Input
+                                ref={inputRef}
+                                value={messageText}
+                                onChange={(e) => setMessageText(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                                placeholder="Type your message..."
+                                className="pr-12 bg-card border-border/60 rounded-full h-12 focus:border-gold focus:ring-gold/20"
+                                disabled={sending}
+                            />
+                            <button
+                                onClick={handleSend}
+                                disabled={!messageText.trim() || sending}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-gold text-black hover:bg-gold-light disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                {sending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Send className="w-4 h-4" />
+                                )}
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <Button
-                    onClick={handleEndSession}
-                    variant="outline"
-                    className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-400"
-                >
-                    <X className="w-4 h-4 mr-2" />
-                    End Session
-                </Button>
-            </footer>
+                    <Button
+                        onClick={handleEndSession}
+                        variant="outline"
+                        className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-400"
+                    >
+                        <X className="w-4 h-4 mr-2" />
+                        End Session
+                    </Button>
+                </footer>
+            )}
+            
+            {/* Completed Session Footer */}
+            {sessionStatus === "completed" && (
+                <footer className="sticky bottom-0 bg-background/95 backdrop-blur-lg border-t border-border/40 p-3 pb-safe">
+                    <div className="text-center py-2">
+                        <p className="text-sm text-muted-foreground mb-3">
+                            This session has been completed. You can view the chat history above.
+                        </p>
+                        <Button
+                            onClick={() => navigate('/profile')}
+                            variant="outline"
+                            className="w-full border-gold/30 text-gold hover:bg-gold/10"
+                        >
+                            Back to Profile
+                        </Button>
+                    </div>
+                </footer>
+            )}
 
             {/* Profile View Modal */}
             {expert && (

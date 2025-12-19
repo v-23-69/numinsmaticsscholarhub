@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Bell, Search, ShoppingCart } from "lucide-react";
+import { Bell, Search, ShoppingCart, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PremiumHeaderProps {
@@ -10,6 +10,8 @@ interface PremiumHeaderProps {
   showNotifications?: boolean;
   transparent?: boolean;
   onSearchClick?: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }
 
 export function PremiumHeader({
@@ -19,6 +21,8 @@ export function PremiumHeader({
   showNotifications = true,
   transparent = false,
   onSearchClick,
+  onRefresh,
+  refreshing = false,
 }: PremiumHeaderProps) {
   return (
     <header
@@ -69,6 +73,17 @@ export function PremiumHeader({
 
         {/* Actions */}
         <div className="flex items-center gap-1">
+          {onRefresh && (
+            <motion.button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="p-2.5 rounded-full hover:bg-muted/50 transition-colors disabled:opacity-50"
+              animate={{ rotate: refreshing ? 360 : 0 }}
+              transition={{ duration: refreshing ? 1 : 0, repeat: refreshing ? Infinity : 0, ease: "linear" }}
+            >
+              <RefreshCw className="w-5 h-5 text-foreground" />
+            </motion.button>
+          )}
           {showSearch && (
             <button
               onClick={onSearchClick}

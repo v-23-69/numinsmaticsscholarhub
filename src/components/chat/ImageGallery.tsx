@@ -103,3 +103,7 @@ export function ImageGallery({ images, isOpen, onClose, title = "Coin Images" }:
         </AnimatePresence>
     );
 }
+
+
+
+

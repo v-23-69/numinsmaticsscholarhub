@@ -119,3 +119,7 @@ For issues, check:
 - Vercel Documentation: https://vercel.com/docs
 - Vite Documentation: https://vitejs.dev
 - Supabase Documentation: https://supabase.com/docs
+
+
+
+

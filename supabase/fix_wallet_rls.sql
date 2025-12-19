@@ -37,3 +37,7 @@ WITH CHECK (auth.uid() = user_id);
 SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual 
 FROM pg_policies 
 WHERE tablename = 'nsh_wallets';
+
+
+
+

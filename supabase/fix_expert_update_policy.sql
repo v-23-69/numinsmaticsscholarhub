@@ -30,3 +30,7 @@ USING (
 SELECT schemaname, tablename, policyname, cmd, qual
 FROM pg_policies 
 WHERE tablename = 'auth_requests' AND cmd = 'UPDATE';
+
+
+
+

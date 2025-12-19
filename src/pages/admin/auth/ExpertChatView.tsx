@@ -13,6 +13,7 @@ import { sendTextMessage, fetchMessages, createMessageListener, ChatMessage } fr
 import { SessionTimer } from "@/components/chat/SessionTimer";
 import { ProfileView } from "@/components/chat/ProfileView";
 import { ImageGallery } from "@/components/chat/ImageGallery";
+import { generateAndSaveSessionDocument } from "@/utils/documentGenerator";
 
 export default function ExpertChatView() {
     const { requestId } = useParams();
@@ -142,9 +143,17 @@ export default function ExpertChatView() {
                 // 6. Login expert to CometChat
                 await loginCometChat(user.id);
 
-                // 7. Fetch previous messages
-                const previousMessages = await fetchMessages(reqData.user_id, 50);
-                setMessages(previousMessages.reverse());
+                // 7. Fetch previous messages - only from this session
+                const allMessages = await fetchMessages(reqData.user_id, 100);
+                // Filter messages to only include those from this session
+                const sessionStartTime = startTime.getTime();
+                
+                // Only show messages from this session (messages sent after session started)
+                const sessionMessages = allMessages.filter(msg => {
+                    return msg.sentAt >= sessionStartTime - 60000; // 1 minute buffer
+                });
+                
+                setMessages(sessionMessages.reverse());
 
                 // 8. Set up message listener
                 removeListener = createMessageListener(
@@ -201,13 +210,37 @@ export default function ExpertChatView() {
     };
 
     const handleEndSession = async () => {
-        if (!requestId || !user) return;
+        if (!requestId || !user || !userUID) return;
         
-        if (!confirm("Are you sure you want to end this session? This action cannot be undone.")) {
+        if (!confirm("Are you sure you want to end this session? A document will be generated with all Q&A.")) {
             return;
         }
 
         try {
+            // Generate and save session document before ending
+            const expertName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Expert';
+            
+            toast.info("Generating session document...");
+            
+            // Format messages for document generation
+            const formattedMessages: ChatMessage[] = messages.map(msg => ({
+                id: msg.id,
+                text: msg.text,
+                senderId: msg.senderId,
+                receiverId: msg.receiverId,
+                sentAt: msg.sentAt,
+                senderName: msg.senderId === user.id ? expertName : userName,
+            }));
+
+            await generateAndSaveSessionDocument(
+                requestId,
+                userUID,
+                user.id,
+                formattedMessages,
+                expertName,
+                userName
+            );
+
             const { error } = await supabase
                 .from('auth_requests')
                 .update({ status: 'completed' })
@@ -215,7 +248,7 @@ export default function ExpertChatView() {
 
             if (error) throw error;
 
-            toast.success("Session ended successfully");
+            toast.success("Session ended successfully. Document saved!");
             // Navigate back
             if (window.location.pathname.includes('/expert/')) {
                 navigate('/expert/dashboard');
@@ -229,15 +262,36 @@ export default function ExpertChatView() {
     };
 
     const handleSessionExpire = async () => {
-        if (!requestId) return;
+        if (!requestId || !user || !userUID) return;
         
         try {
+            // Generate document before expiring
+            const expertName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'Expert';
+            
+            const formattedMessages: ChatMessage[] = messages.map(msg => ({
+                id: msg.id,
+                text: msg.text,
+                senderId: msg.senderId,
+                receiverId: msg.receiverId,
+                sentAt: msg.sentAt,
+                senderName: msg.senderId === user.id ? expertName : userName,
+            }));
+
+            await generateAndSaveSessionDocument(
+                requestId,
+                userUID,
+                user.id,
+                formattedMessages,
+                expertName,
+                userName
+            );
+
             await supabase
                 .from('auth_requests')
                 .update({ status: 'completed' })
                 .eq('id', requestId);
             
-            toast.info("Session expired. The chat has been closed.");
+            toast.info("Session expired. Document saved!");
             // Navigate back
             if (window.location.pathname.includes('/expert/')) {
                 navigate('/expert/dashboard');
@@ -452,3 +506,7 @@ export default function ExpertChatView() {
         </div>
     );
 }
+
+
+
+

@@ -11,6 +11,7 @@ import ExpertRoute from "./components/auth/ExpertRoute";
 import { SwipeContainer } from "@/components/mobile/SwipeContainer";
 
 // Mobile Pages
+import Welcome from "./pages/mobile/Welcome";
 import MobileHome from "./pages/mobile/MobileHome";
 import MobileProfile from "./pages/mobile/MobileProfile";
 import MobileMarketplace from "./pages/mobile/MobileMarketplace";
@@ -22,6 +23,7 @@ import MobileAuth from "./pages/mobile/MobileAuth";
 import MobileSell from "./pages/mobile/MobileSell";
 import MobileExpertChat from "./pages/mobile/MobileExpertChat";
 import ProfileSetup from "./pages/mobile/ProfileSetup";
+import SessionDetailsView from "./pages/mobile/SessionDetailsView";
 import MobileSettings from "./pages/mobile/MobileSettings";
 import CoinDetail from "./pages/CoinDetail";
 import NotFound from "./pages/NotFound";
@@ -50,10 +52,13 @@ function AppRoutes() {
   const content = (
     <Routes>
       {/* Public routes */}
-      <Route path="/" element={<MobileHome />} />
+      <Route path="/welcome" element={<Welcome />} />
       <Route path="/auth" element={<MobileAuth />} />
       <Route path="/marketplace" element={<MobileMarketplace />} />
       <Route path="/marketplace/coin/:id" element={<CoinDetail />} />
+      
+      {/* Protected home - redirects to welcome if not logged in */}
+      <Route path="/" element={<MobileHome />} />
 
       {/* Protected routes */}
       <Route path="/profile/setup" element={
@@ -101,6 +106,11 @@ function AppRoutes() {
       <Route path="/expert-chat/:id" element={
         <ProtectedRoute>
           <MobileExpertChat />
+        </ProtectedRoute>
+      } />
+      <Route path="/session/:id" element={
+        <ProtectedRoute>
+          <SessionDetailsView />
         </ProtectedRoute>
       } />
 

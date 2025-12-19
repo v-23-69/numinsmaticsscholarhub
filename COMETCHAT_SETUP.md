@@ -93,3 +93,7 @@ If chat doesn't work:
 4. Ensure both user and expert CometChat users exist
 5. Verify user is logged in to CometChat (happens automatically in chat pages)
 
+
+
+
+

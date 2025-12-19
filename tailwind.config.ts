@@ -66,15 +66,15 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
-        // NSH Premium Royal Black-Gold Theme
+        // NSH Premium Royal Black-Light Blue Theme
         admin: {
           bg: "#0A0A0A", // Matte Black
           surface: "#111213", // Charcoal Stone
           surface2: "#141414", // Slightly lighter surface
-          gold: "#D4AF37", // Royal Gold
-          gold2: "#B0892F", // Antique Bronze
+          gold: "#60A5FA", // Light Blue (sky-400)
+          gold2: "#3B82F6", // Blue (blue-500)
           text: "#F5F4F1", // Ivory White
-          border: "rgba(212, 175, 55, 0.2)", // Gold border with opacity
+          border: "rgba(96, 165, 250, 0.2)", // Light Blue border with opacity
         },
         gold: {
           DEFAULT: "hsl(var(--gold))",
@@ -109,8 +109,8 @@ export default {
         md: "0 4px 12px -2px hsl(var(--foreground) / 0.08)",
         lg: "0 12px 32px -4px hsl(var(--foreground) / 0.12)",
         xl: "0 24px 48px -8px hsl(var(--foreground) / 0.16)",
-        gold: "0 4px 24px -4px rgba(212, 175, 55, 0.25)",
-        "gold-glow": "0 0 20px rgba(212, 175, 55, 0.15)",
+        gold: "0 4px 24px -4px rgba(96, 165, 250, 0.25)",
+        "gold-glow": "0 0 20px rgba(96, 165, 250, 0.15)",
         "admin-card": "0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)",
       },
       keyframes: {
@@ -127,8 +127,8 @@ export default {
           "100%": { transform: "translateX(100%)" },
         },
         "pulse-gold": {
-          "0%, 100%": { boxShadow: "0 0 15px rgba(212, 175, 55, 0.2)" },
-          "50%": { boxShadow: "0 0 25px rgba(212, 175, 55, 0.4)" },
+          "0%, 100%": { boxShadow: "0 0 15px rgba(96, 165, 250, 0.2)" },
+          "50%": { boxShadow: "0 0 25px rgba(96, 165, 250, 0.4)" },
         },
         float: {
           "0%, 100%": { transform: "translateY(0)" },

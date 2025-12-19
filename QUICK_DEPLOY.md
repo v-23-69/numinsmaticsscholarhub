@@ -26,6 +26,8 @@ VITE_COMETCHAT_REGION = ap (or us/in)
 VITE_COMETCHAT_AUTH_KEY = (your value)
 ```
 
+**Note:** The code supports both `VITE_SUPABASE_ANON_KEY` and `VITE_SUPABASE_PUBLISHABLE_KEY` - use either one (they're the same value from Supabase).
+
 **⚠️ Important:** Check all 3 environments (Production, Preview, Development) for each variable!
 
 ### 4️⃣ Deploy
@@ -64,3 +66,7 @@ Vercel auto-deploys! ✨
 ---
 
 **Full guide:** See `DEPLOY_TO_VERCEL.md` for detailed instructions.
+
+
+
+

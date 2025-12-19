@@ -10,3 +10,7 @@ ON public.auth_requests(session_started_at);
 
 -- Add comment
 COMMENT ON COLUMN public.auth_requests.session_started_at IS 'Timestamp when the expert accepted the request and session started. Used for 5-minute session timer.';
+
+
+
+

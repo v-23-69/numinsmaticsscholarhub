@@ -1,62 +1,151 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShoppingBag, RefreshCw, CheckCircle, AlertCircle, Link as LinkIcon, ArrowRight, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock Logs since table is missing in current schema iteration
-const MOCK_LOGS = [
-    { id: 1, status: 'success', message: 'Synced 12 new products from Shopify', time: '2 hours ago' },
-    { id: 2, status: 'error', message: 'Failed to update inventory for SKU-112', time: '5 hours ago' },
-    { id: 3, status: 'success', message: 'Order #1002 status updated to Fulfilled', time: '1 day ago' },
-];
+interface SyncLog {
+    id: number;
+    status: 'success' | 'error';
+    message: string;
+    time: string;
+}
 
 const ShopifySyncManager = () => {
     const [isConnected, setIsConnected] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const [progress, setProgress] = useState(0);
-    const [logs, setLogs] = useState(MOCK_LOGS);
+    const [logs, setLogs] = useState<SyncLog[]>([]);
+    const [shopifyProductCount, setShopifyProductCount] = useState(0);
+    const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
-    const handleConnect = () => {
-        // Simulate OAuth flow
-        toast.promise(
-            new Promise((resolve) => setTimeout(resolve, 2000)),
-            {
-                loading: 'Connecting to Shopify...',
-                success: () => {
-                    setIsConnected(true);
-                    return 'Successfully connected to Shopify Store!';
-                },
-                error: 'Connection failed',
+    // Check connection status and fetch stats on mount
+    useEffect(() => {
+        checkConnection();
+        fetchStats();
+    }, []);
+
+    const checkConnection = async () => {
+        try {
+            const { data, error } = await supabase.functions.invoke('shopify-sync', {
+                body: { action: 'test_connection' }
+            });
+
+            if (error) throw error;
+            
+            if (data?.success) {
+                setIsConnected(true);
             }
-        );
+        } catch (error: any) {
+            console.error('Connection check failed:', error);
+            setIsConnected(false);
+        }
     };
 
-    const handleSync = () => {
-        if (!isConnected) return;
+    const fetchStats = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('coin_listings')
+                .select('id, updated_at', { count: 'exact', head: false })
+                .eq('is_shopify_product', true);
+
+            if (!error && data) {
+                setShopifyProductCount(data.length);
+                if (data.length > 0) {
+                    const latest = data.sort((a, b) => 
+                        new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+                    )[0];
+                    setLastSyncTime(latest.updated_at);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    };
+
+    const handleConnect = async () => {
+        try {
+            const { data, error } = await supabase.functions.invoke('shopify-sync', {
+                body: { action: 'test_connection' }
+            });
+
+            if (error) throw error;
+
+            if (data?.success) {
+                setIsConnected(true);
+                toast.success('Successfully connected to Shopify Store!');
+            } else {
+                throw new Error('Connection failed');
+            }
+        } catch (error: any) {
+            toast.error('Connection failed: ' + (error.message || 'Unknown error'));
+            console.error('Connection error:', error);
+        }
+    };
+
+    const handleSync = async () => {
+        if (!isConnected) {
+            toast.error('Please connect to Shopify first');
+            return;
+        }
 
         setIsSyncing(true);
         setProgress(0);
 
-        // Simulate Sync Progress
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 100) {
-                    clearInterval(interval);
-                    setIsSyncing(false);
-                    setLogs(prevLogs => [
-                        { id: Date.now(), status: 'success', message: 'Manual sync completed successfully', time: 'Just now' },
-                        ...prevLogs
-                    ]);
-                    toast.success("Sync Completed");
-                    return 100;
-                }
-                return prev + 10;
+        try {
+            // Simulate progress
+            const progressInterval = setInterval(() => {
+                setProgress(prev => Math.min(prev + 5, 90));
+            }, 200);
+
+            const { data, error } = await supabase.functions.invoke('shopify-sync', {
+                body: { action: 'sync_products' }
             });
-        }, 300);
+
+            clearInterval(progressInterval);
+            setProgress(100);
+
+            if (error) throw error;
+
+            if (data?.success) {
+                const message = data.message || `Synced ${data.synced_count || 0} products`;
+                setLogs(prevLogs => [
+                    { 
+                        id: Date.now(), 
+                        status: 'success', 
+                        message: message,
+                        time: 'Just now' 
+                    },
+                    ...prevLogs.slice(0, 9) // Keep last 10 logs
+                ]);
+                
+                toast.success(message);
+                setLastSyncTime(new Date().toISOString());
+                await fetchStats();
+            } else {
+                throw new Error(data?.error || 'Sync failed');
+            }
+        } catch (error: any) {
+            const errorMsg = error.message || 'Sync failed';
+            setLogs(prevLogs => [
+                { 
+                    id: Date.now(), 
+                    status: 'error', 
+                    message: errorMsg,
+                    time: 'Just now' 
+                },
+                ...prevLogs.slice(0, 9)
+            ]);
+            toast.error('Sync failed: ' + errorMsg);
+            console.error('Sync error:', error);
+        } finally {
+            setIsSyncing(false);
+            setTimeout(() => setProgress(0), 1000);
+        }
     };
 
     return (
@@ -123,20 +212,38 @@ const ShopifySyncManager = () => {
                         <Card className="bg-admin-surface border-admin-border">
                             <CardContent className="p-6">
                                 <p className="text-gray-400 text-xs uppercase font-bold">Products Synced</p>
-                                <h3 className="text-2xl font-bold text-white mt-1">1,248</h3>
+                                <h3 className="text-2xl font-bold text-white mt-1">{shopifyProductCount.toLocaleString()}</h3>
                             </CardContent>
                         </Card>
                         <Card className="bg-admin-surface border-admin-border">
                             <CardContent className="p-6">
-                                <p className="text-gray-400 text-xs uppercase font-bold">Pending Orders</p>
-                                <h3 className="text-2xl font-bold text-admin-gold mt-1">5</h3>
+                                <p className="text-gray-400 text-xs uppercase font-bold">Store Status</p>
+                                <h3 className="text-lg font-medium text-white mt-1 flex items-center gap-2">
+                                    {isConnected ? (
+                                        <>
+                                            Connected <CheckCircle className="w-4 h-4 text-green-500" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            Not Connected <AlertCircle className="w-4 h-4 text-red-500" />
+                                        </>
+                                    )}
+                                </h3>
                             </CardContent>
                         </Card>
                         <Card className="bg-admin-surface border-admin-border">
                             <CardContent className="p-6">
                                 <p className="text-gray-400 text-xs uppercase font-bold">Last Sync</p>
                                 <h3 className="text-lg font-medium text-white mt-1 flex items-center gap-2">
-                                    12 mins ago <CheckCircle className="w-4 h-4 text-green-500" />
+                                    {lastSyncTime ? (
+                                        <>
+                                            {formatTimeAgo(lastSyncTime)} <CheckCircle className="w-4 h-4 text-green-500" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            Never <Clock className="w-4 h-4 text-gray-500" />
+                                        </>
+                                    )}
                                 </h3>
                             </CardContent>
                         </Card>
@@ -174,5 +281,21 @@ const ShopifySyncManager = () => {
         </div>
     );
 };
+
+// Helper function to format time ago
+function formatTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+}
 
 export default ShopifySyncManager;

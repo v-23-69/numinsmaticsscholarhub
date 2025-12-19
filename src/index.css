@@ -32,8 +32,8 @@
     --popover: 210 40% 95%;
     --popover-foreground: 220 30% 12%;
     
-    /* Primary - Heritage Gold */
-    --primary: 43 74% 49%;
+    /* Primary - Light Blue */
+    --primary: 213 94% 68%;
     --primary-foreground: 220 30% 12%;
     
     /* Secondary - Soft Light Blue */
@@ -44,22 +44,22 @@
     --muted: 210 30% 93%;
     --muted-foreground: 220 15% 40%;
     
-    /* Accent - Bright Gold */
-    --accent: 45 78% 55%;
+    /* Accent - Bright Light Blue */
+    --accent: 213 96% 72%;
     --accent-foreground: 220 30% 12%;
     
     /* Destructive */
     --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 98%;
     
-    /* Border & Input - Light Blue with Gold Accents */
+    /* Border & Input - Light Blue Accents */
     --border: 210 25% 87%;
     --input: 210 30% 89%;
-    --ring: 43 74% 49%;
+    --ring: 213 94% 68%;
     
     /* Chart Colors */
-    --chart-1: 43 74% 49%;
-    --chart-2: 45 78% 55%;
+    --chart-1: 213 94% 68%;
+    --chart-2: 213 96% 72%;
     --chart-3: 210 45% 70%;
     --chart-4: 210 40% 60%;
     --chart-5: 210 35% 50%;
@@ -68,11 +68,11 @@
        NSH Custom Design Tokens - Light Theme (Modern Premium Light Blue & Gold)
        ───────────────────────────────────────────────────────────────────────── */
     
-    /* Gold Spectrum - Rich & Vibrant */
-    --gold: 43 74% 49%;
-    --gold-light: 45 78% 55%;
-    --gold-dark: 42 68% 42%;
-    --gold-muted: 43 50% 45%;
+    /* Gold Spectrum - Replaced with Light Blue */
+    --gold: 213 94% 68%;
+    --gold-light: 213 96% 72%;
+    --gold-dark: 213 92% 64%;
+    --gold-muted: 213 85% 60%;
     
     /* Blue Spectrum - Modern Premium Light Blues */
     --blue: 210 45% 87%;
@@ -102,12 +102,12 @@
     /* Sidebar */
     --sidebar-background: 40 30% 92%;
     --sidebar-foreground: 30 10% 12%;
-    --sidebar-primary: 43 56% 52%;
+    --sidebar-primary: 213 94% 68%;
     --sidebar-primary-foreground: 30 10% 12%;
-    --sidebar-accent: 45 65% 63%;
+    --sidebar-accent: 213 96% 72%;
     --sidebar-accent-foreground: 30 10% 12%;
     --sidebar-border: 38 25% 80%;
-    --sidebar-ring: 43 56% 52%;
+    --sidebar-ring: 213 94% 68%;
   }
 
   .dark {
@@ -126,8 +126,8 @@
     --popover: 25 10% 10%;
     --popover-foreground: 45 25% 95%;
     
-    /* Primary - Premium Gold */
-    --primary: 43 74% 49%;
+    /* Primary - Light Blue */
+    --primary: 213 94% 68%;
     --primary-foreground: 0 0% 3%;
     
     /* Secondary - Rich Brown */
@@ -138,8 +138,8 @@
     --muted: 25 10% 14%;
     --muted-foreground: 45 15% 65%;
     
-    /* Accent - Bright Luxury Gold */
-    --accent: 45 78% 55%;
+    /* Accent - Bright Light Blue */
+    --accent: 213 96% 72%;
     --accent-foreground: 0 0% 3%;
     
     /* Destructive */
@@ -149,20 +149,20 @@
     /* Border & Input - Brown-Black */
     --border: 25 12% 16%;
     --input: 25 10% 12%;
-    --ring: 43 74% 49%;
+    --ring: 213 94% 68%;
     
     /* Chart Colors */
-    --chart-1: 43 74% 49%;
-    --chart-2: 45 78% 55%;
+    --chart-1: 213 94% 68%;
+    --chart-2: 213 96% 72%;
     --chart-3: 25 20% 30%;
     --chart-4: 25 15% 40%;
     --chart-5: 25 10% 50%;
     
-    /* Gold Spectrum - Premium Luxury */
-    --gold: 43 74% 49%;
-    --gold-light: 45 78% 55%;
-    --gold-dark: 42 68% 42%;
-    --gold-muted: 43 50% 38%;
+    /* Gold Spectrum - Replaced with Light Blue */
+    --gold: 213 94% 68%;
+    --gold-light: 213 96% 72%;
+    --gold-dark: 213 92% 64%;
+    --gold-muted: 213 85% 60%;
     
     /* Blue Spectrum - Deep Premium Blues for Dark Theme */
     --blue: 220 25% 18%;
@@ -189,12 +189,12 @@
     /* Sidebar - Premium Brown-Black */
     --sidebar-background: 25 8% 8%;
     --sidebar-foreground: 45 25% 95%;
-    --sidebar-primary: 43 74% 49%;
+    --sidebar-primary: 213 94% 68%;
     --sidebar-primary-foreground: 0 0% 3%;
-    --sidebar-accent: 45 78% 55%;
+    --sidebar-accent: 213 96% 72%;
     --sidebar-accent-foreground: 0 0% 3%;
     --sidebar-border: 25 12% 16%;
-    --sidebar-ring: 43 74% 49%;
+    --sidebar-ring: 213 94% 68%;
   }
 }
 

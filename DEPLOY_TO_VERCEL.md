@@ -76,6 +76,7 @@
    |--------------|-------|---------------|
    | `VITE_SUPABASE_URL` | Your Supabase URL | Supabase Dashboard → Settings → API |
    | `VITE_SUPABASE_ANON_KEY` | Your Supabase Anon Key | Supabase Dashboard → Settings → API |
+   | `VITE_SUPABASE_PUBLISHABLE_KEY` | Same as ANON_KEY (optional, for compatibility) | Same as above |
    | `VITE_COMETCHAT_APP_ID` | Your CometChat App ID | CometChat Dashboard → Settings |
    | `VITE_COMETCHAT_REGION` | `ap` or `us` or `in` | CometChat Dashboard → Settings |
    | `VITE_COMETCHAT_AUTH_KEY` | Your CometChat Auth Key | CometChat Dashboard → Settings |
@@ -250,3 +251,7 @@ Your app is now live on the internet for FREE! Share your Vercel URL with anyone
 ---
 
 **Last Updated:** Ready for deployment with premium light blue + gold theme! 🚀
+
+
+
+
